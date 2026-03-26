@@ -20,6 +20,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Stamp build number into version
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $pkg.version = "$($pkg.version)-${{ github.run_number }}"
+          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
+          Write-Host "Version: $($pkg.version)"
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
