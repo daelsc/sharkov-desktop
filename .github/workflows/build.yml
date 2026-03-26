@@ -84,7 +84,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: sharkorddesktop-${{ steps.version.outputs.version }}-build${{ github.run_number }}
+          name: sharkorddesktop-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: |
             out/*.exe
             out/*.zip
