@@ -33,6 +33,25 @@
           }
         });
       }, 100);
+    } else if (e.data.type === 'sharkord-start-process-audio' && e.data.pid && api && api.startProcessAudioCapture) {
+      api.startProcessAudioCapture(e.data.pid).then(function (result) {
+        if (result && !result.ok) {
+          console.error('[Sharkord] Process audio capture failed:', result.error);
+          var activeFrame = document.querySelector('.client-frame.active');
+          if (activeFrame && activeFrame.contentWindow) {
+            try {
+              activeFrame.contentWindow.postMessage(
+                { type: 'sharkord-process-audio-failed', error: result.error || 'unknown' },
+                '*'
+              );
+            } catch (_) {}
+          }
+        }
+      }).catch(function (err) {
+        console.error('[Sharkord] Process audio capture error:', err);
+      });
+    } else if (e.data.type === 'sharkord-stop-process-audio' && api && api.stopProcessAudioCapture) {
+      api.stopProcessAudioCapture();
     } else if (e.data.type === 'sharkord-copy-to-clipboard' && typeof e.data.text === 'string') {
       openCopyTextModal(e.data.text);
     } else if (e.data.type === 'sharkord-iframe-contextmenu' && typeof e.data.url === 'string') {
@@ -2009,6 +2028,21 @@
       }
       renderList();
       playRippleOnActiveButton();
+    });
+  }
+
+  // Per-process audio: relay PCM chunks from main process to active iframe
+  if (api.onProcessAudioChunk) {
+    api.onProcessAudioChunk(function (buffer) {
+      var activeFrame = document.querySelector('.client-frame.active');
+      if (activeFrame && activeFrame.contentWindow) {
+        try {
+          activeFrame.contentWindow.postMessage(
+            { type: 'sharkord-process-audio-chunk', buffer: buffer },
+            '*'
+          );
+        } catch (_) {}
+      }
     });
   }
 })();
