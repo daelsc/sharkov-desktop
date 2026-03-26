@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/per-process-audio
     tags:
       - 'v*'
   pull_request:
@@ -17,15 +16,25 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Stamp build version
+        id: version
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $sha = git rev-parse --short=7 HEAD
+          $pkg.version = "$($pkg.version)-${{ github.run_number }}.$sha"
+          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
+          echo "version=$($pkg.version)" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $($pkg.version)"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -34,6 +43,11 @@ jobs:
 
       - name: Install root dependencies
         run: npm install
+        env:
+          CUSTOM_ELECTRON_SKIP: '1'
+
+      - name: Install custom Electron (NVENC patched)
+        run: node scripts/install-custom-electron.js
 
       - name: Install native addon dependencies
         run: npm install
@@ -46,18 +60,34 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Package with electron-builder
-        run: npx electron-builder --win --x64
+      - name: Package unpacked directory
+        run: npx electron-builder --win dir --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Replace packaged Electron with NVENC build
+        run: |
+          $src = "node_modules\electron\dist"
+          $dst = "out\win-unpacked"
+          Copy-Item "$src\electron.exe" "$dst\Sharkord.exe" -Force
+          Get-ChildItem "$src\*.dll" | Copy-Item -Destination "$dst" -Force
+          Get-ChildItem "$src\*.bin" | Copy-Item -Destination "$dst" -Force
+          Get-ChildItem "$src\*.pak" | Copy-Item -Destination "$dst" -Force
+          Get-ChildItem "$src\*.dat" | Copy-Item -Destination "$dst" -Force
+          if (Test-Path "$src\locales") { Get-ChildItem "$src\locales\*" | Copy-Item -Destination "$dst\locales" -Force }
+          if (Test-Path "$src\resources\electron.asar") { Copy-Item "$src\resources\electron.asar" "$dst\resources\electron.asar" -Force }
+          Write-Host "Replaced Electron with NVENC patched build"
+
+      - name: Repackage portable exe
+        run: npx electron-builder --win portable --x64 --prepackaged out/win-unpacked
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: windows-build
-          path: |
-            out/*.exe
-            out/*.zip
+          name: sharkorddesktop-${{ steps.version.outputs.version }}
+          path: out/*.exe
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -67,14 +97,12 @@ jobs:
       contents: write
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
-          name: windows-build
+          pattern: sharkorddesktop-*
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          files: |
-            *.exe
-            *.zip
+          files: '**/*.exe'

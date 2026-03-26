@@ -735,6 +735,14 @@
     addBtn.textContent = '+';
     addBtn.addEventListener('click', openAddServerModal);
     footer.appendChild(addBtn);
+    if (api && api.getAppVersion) {
+      var verLabel = document.createElement('div');
+      verLabel.className = 'sidebar-version';
+      api.getAppVersion().then(function (v) {
+        if (v) verLabel.textContent = 'v' + v;
+      });
+      footer.appendChild(verLabel);
+    }
     sidebar.appendChild(footer);
   }
 

@@ -217,6 +217,14 @@ body.sharkord-dragging .frame-wrap { pointer-events: none; }
   transition: color 0.15s, background 0.15s;
 }
 .add-btn:hover { color: #22c55e; background: #27272a; }
+.sidebar-version {
+  font-size: 9px;
+  color: #52525b;
+  text-align: center;
+  padding: 2px 0 0;
+  user-select: text;
+  cursor: default;
+}
 .settings-btn {
   width: 44px;
   height: 44px;
