@@ -553,7 +553,51 @@ function buildMenu(): Menu {
   ]);
 }
 
+// Enable NVENC hardware encoding for WebRTC (requires Steve Seguin's patched Electron on Windows)
+app.commandLine.appendSwitch('enable-features', 'PlatformHEVCEncoderSupport,MediaFoundationVideoCapture');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('force-fieldtrials',
+  'WebRTC-DisableAdaptiveScaling/Enabled/' +
+  'WebRTC-LockResolution/Enabled/' +
+  'WebRTC-LockFramerate/Enabled/' +
+  'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/'
+);
+
+// Diagnostic logger — writes to Desktop/sharkord-debug.log
+const debugLogPath = path.join(app.getPath('desktop'), 'sharkord-debug.log');
+function debugLog(msg: string): void {
+  try {
+    const ts = new Date().toISOString().slice(11, 19);
+    writeFileSync(debugLogPath, `[${ts}] ${msg}\n`, { flag: 'a' });
+  } catch {}
+}
+
 app.whenReady().then(async () => {
+  // Clear log on startup
+  try { writeFileSync(debugLogPath, ''); } catch {}
+
+  debugLog(`Electron version: ${process.versions.electron}`);
+  debugLog(`Chrome version: ${process.versions.chrome}`);
+  debugLog(`Platform: ${process.platform} ${process.arch}`);
+  debugLog(`App version: ${app.getVersion()}`);
+
+  // Log GPU info
+  try {
+    const gpuInfo = await app.getGPUInfo('basic') as { gpuDevice?: Array<{ vendorId: number; deviceId: number; driverVersion: string }> };
+    if (gpuInfo.gpuDevice) {
+      for (const gpu of gpuInfo.gpuDevice) {
+        debugLog(`GPU: vendorId=0x${gpu.vendorId.toString(16)} deviceId=0x${gpu.deviceId.toString(16)} driver=${gpu.driverVersion}`);
+      }
+    }
+  } catch (e) { debugLog(`GPU info error: ${e}`); }
+
+  debugLog(`Hardware acceleration: ${!app.commandLine.hasSwitch('disable-gpu')}`);
+  debugLog(`Features: ${app.commandLine.getSwitchValue('enable-features')}`);
+  debugLog(`Field trials: ${app.commandLine.getSwitchValue('force-fieldtrials')}`);
+
   const { default: Store } = await import('electron-store');
   const StoreImpl = (await import('electron-store')).default;
   store = new StoreImpl<{ serverUrl: string; savedServers: string }>({
@@ -564,6 +608,33 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(buildMenu());
   createMainWindow();
   registerPttGlobalShortcut();
+
+  // Log WebRTC codec capabilities from renderer
+  if (mainWindow) {
+    mainWindow.webContents.on('did-finish-load', () => {
+      mainWindow?.webContents.executeJavaScript(`
+        (function() {
+          try {
+            var pc = new RTCPeerConnection();
+            var caps = RTCRtpSender.getCapabilities('video');
+            var codecs = caps ? caps.codecs.map(function(c) { return c.mimeType + (c.sdpFmtpLine ? ' ' + c.sdpFmtpLine : ''); }) : [];
+            var unique = [...new Set(codecs)];
+            return JSON.stringify({ userAgent: navigator.userAgent, videoCodecs: unique });
+          } catch(e) { return JSON.stringify({ error: String(e) }); }
+        })();
+      `).then((result: string) => {
+        try {
+          const info = JSON.parse(result);
+          debugLog(`UserAgent: ${info.userAgent}`);
+          if (info.videoCodecs) {
+            debugLog(`WebRTC video codecs (${info.videoCodecs.length}):`);
+            for (const c of info.videoCodecs) debugLog(`  ${c}`);
+          }
+          if (info.error) debugLog(`Codec check error: ${info.error}`);
+        } catch {}
+      }).catch(() => {});
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
