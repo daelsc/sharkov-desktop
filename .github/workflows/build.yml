@@ -1,0 +1,80 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches:
+      - main
+      - feature/per-process-audio
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install setuptools for node-gyp
+        run: pip install setuptools
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install native addon dependencies
+        run: npm install
+        working-directory: native
+
+      - name: Build native addon
+        run: npx node-gyp rebuild --arch=x64
+        working-directory: native
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Package with electron-builder
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            out/*.exe
+            out/*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            *.exe
+            *.zip
