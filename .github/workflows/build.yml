@@ -75,10 +75,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get version from package.json
+        id: version
+        run: |
+          $ver = (Get-Content package.json | ConvertFrom-Json).version
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: windows-build
+          name: sharkorddesktop-${{ steps.version.outputs.version }}-build${{ github.run_number }}
           path: |
             out/*.exe
             out/*.zip
@@ -93,7 +99,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v5
         with:
-          name: windows-build
+          pattern: sharkorddesktop-*
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2
