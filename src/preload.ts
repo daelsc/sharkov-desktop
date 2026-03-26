@@ -78,5 +78,10 @@ contextBridge.exposeInMainWorld('sharkordDesktop', {
     ipcRenderer.on('process-audio-chunk', (_event, buffer: ArrayBuffer) => {
       callback(buffer);
     });
+  },
+  onPttStateChange: (callback: (pressed: boolean) => void) => {
+    ipcRenderer.on('ptt-state-change', (_event, pressed: boolean) => {
+      callback(pressed);
+    });
   }
 });

@@ -78,40 +78,74 @@
   });
 
   var pttKeyBinding = null;
-  var pttKeyDownHandler = null;
-  var pttKeyUpHandler = null;
+  var pttDownHandler = null;
+  var pttUpHandler = null;
+  var pttEventType = null; // 'key' or 'mouse'
+  var pttCurrentlyPressed = false;
+  function updatePttIndicator(pressed) {
+    pttCurrentlyPressed = pressed;
+    var el = document.getElementById('ptt-indicator');
+    if (!el) return;
+    if (pressed) { el.classList.add('hot'); el.classList.remove('muted'); }
+    else { el.classList.remove('hot'); el.classList.add('muted'); }
+  }
   function setupPttKeyListeners() {
     if (!api || !api.getDevicePreferences || !api.pttState) return;
-    if (pttKeyDownHandler) {
-      document.removeEventListener('keydown', pttKeyDownHandler, true);
-      document.removeEventListener('keyup', pttKeyUpHandler, true);
-      pttKeyDownHandler = pttKeyUpHandler = null;
+    if (pttDownHandler) {
+      if (pttEventType === 'mouse') {
+        document.removeEventListener('mousedown', pttDownHandler, true);
+        document.removeEventListener('mouseup', pttUpHandler, true);
+      } else {
+        document.removeEventListener('keydown', pttDownHandler, true);
+        document.removeEventListener('keyup', pttUpHandler, true);
+      }
+      pttDownHandler = pttUpHandler = null;
+      pttEventType = null;
     }
     pttKeyBinding = null;
     api.getDevicePreferences().then(function (prefs) {
       var ptt = prefs && prefs.pttBinding;
-      if (!ptt || String(ptt).indexOf('Key') !== 0) return;
+      if (!ptt) {
+        var ind = document.getElementById('ptt-indicator');
+        if (ind) ind.style.display = 'none';
+        return;
+      }
       pttKeyBinding = ptt;
-      pttKeyDownHandler = function (e) {
-        if (e.code === pttKeyBinding) {
-          e.preventDefault();
-          e.stopPropagation();
-          api.pttState(true);
-        }
-      };
-      pttKeyUpHandler = function (e) {
-        if (e.code === pttKeyBinding) {
-          e.preventDefault();
-          e.stopPropagation();
-          api.pttState(false);
-        }
-      };
-      document.addEventListener('keydown', pttKeyDownHandler, true);
-      document.addEventListener('keyup', pttKeyUpHandler, true);
+      var ind = document.getElementById('ptt-indicator');
+      if (ind) { ind.style.display = ''; ind.classList.add('muted'); ind.classList.remove('hot'); }
+      if (String(ptt).indexOf('Mouse') === 0) {
+        var btn = parseInt(String(ptt).slice(5), 10) || 0;
+        pttEventType = 'mouse';
+        pttDownHandler = function (e) {
+          if (e.button === btn) { e.preventDefault(); api.pttState(true); updatePttIndicator(true); }
+        };
+        pttUpHandler = function (e) {
+          if (e.button === btn) { e.preventDefault(); api.pttState(false); updatePttIndicator(false); }
+        };
+        document.addEventListener('mousedown', pttDownHandler, true);
+        document.addEventListener('mouseup', pttUpHandler, true);
+      } else {
+        pttEventType = 'key';
+        pttDownHandler = function (e) {
+          if (e.code === pttKeyBinding) { e.preventDefault(); e.stopPropagation(); api.pttState(true); updatePttIndicator(true); }
+        };
+        pttUpHandler = function (e) {
+          if (e.code === pttKeyBinding) { e.preventDefault(); e.stopPropagation(); api.pttState(false); updatePttIndicator(false); }
+        };
+        document.addEventListener('keydown', pttDownHandler, true);
+        document.addEventListener('keyup', pttUpHandler, true);
+      }
     });
   }
 
   if (api) setupPttKeyListeners();
+
+  // Listen for PTT state changes from background poll (when app is unfocused)
+  if (api && api.onPttStateChange) {
+    api.onPttStateChange(function (pressed) {
+      updatePttIndicator(pressed);
+    });
+  }
 
   if (!api || !api.getServers || !api.getServerUrl) {
     var fallback = document.createElement('iframe');
@@ -728,6 +762,13 @@
     settingsBtn.textContent = '\u2699';
     settingsBtn.addEventListener('click', openDeviceSettingsModal);
     footer.appendChild(settingsBtn);
+    var pttInd = document.createElement('div');
+    pttInd.id = 'ptt-indicator';
+    pttInd.className = 'ptt-indicator muted';
+    pttInd.style.display = 'none';
+    pttInd.title = 'Push to talk';
+    pttInd.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>';
+    footer.appendChild(pttInd);
     var addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'add-btn';
@@ -1230,12 +1271,28 @@
     if (!binding) return 'Not set';
     if (binding.indexOf('Mouse') === 0) {
       var num = binding.slice(5);
-      return 'Mouse ' + num;
+      var mouseNames = { '1': 'Middle click', '3': 'Mouse back', '4': 'Mouse forward' };
+      return mouseNames[num] || ('Mouse ' + num);
     }
     if (binding.indexOf('Key') === 0) {
-      var key = binding.slice(3);
-      return key.length === 1 ? key : key;
+      return binding.slice(3); // "KeyA" -> "A"
     }
+    if (binding.indexOf('Digit') === 0) {
+      return binding.slice(5); // "Digit1" -> "1"
+    }
+    var displayNames = {
+      'Space': 'Space', 'Enter': 'Enter', 'Tab': 'Tab', 'Backspace': 'Backspace',
+      'ShiftLeft': 'Left Shift', 'ShiftRight': 'Right Shift',
+      'ControlLeft': 'Left Ctrl', 'ControlRight': 'Right Ctrl',
+      'AltLeft': 'Left Alt', 'AltRight': 'Right Alt',
+      'CapsLock': 'Caps Lock', 'NumLock': 'Num Lock', 'ScrollLock': 'Scroll Lock',
+      'ArrowLeft': '\u2190 Arrow', 'ArrowUp': '\u2191 Arrow', 'ArrowRight': '\u2192 Arrow', 'ArrowDown': '\u2193 Arrow',
+      'Home': 'Home', 'End': 'End', 'PageUp': 'Page Up', 'PageDown': 'Page Down',
+      'Insert': 'Insert', 'Delete': 'Delete', 'Escape': 'Escape'
+    };
+    if (displayNames[binding]) return displayNames[binding];
+    if (binding.indexOf('Numpad') === 0) return 'Numpad ' + binding.slice(6);
+    if (binding.length >= 2 && binding[0] === 'F' && !isNaN(binding.slice(1))) return binding; // F1-F12
     return binding;
   }
 
@@ -1285,7 +1342,7 @@
       e.preventDefault();
       e.stopPropagation();
       var code = e.code || (e.key.length === 1 ? 'Key' + e.key.toUpperCase() : e.key);
-      if (code.indexOf('Key') === 0) stopListening(code);
+      stopListening(code);
     }
 
     function onMouse(e) {

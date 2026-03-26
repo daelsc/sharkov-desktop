@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard } from 'electron';
+import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, clipboard } from 'electron';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -187,7 +187,7 @@ function getDevicePrefsInjectionCode(): string {
     'if(pttBinding&&String(pttBinding).indexOf("Mouse")===0){var btn=parseInt(String(pttBinding).slice(5),10)||0;',
     'document.addEventListener("mousedown",function(e){if(e.button===btn){e.preventDefault();if(window.parent!==window)window.parent.postMessage({type:"sharkord-ptt",pressed:true},"*");}},true);',
     'document.addEventListener("mouseup",function(e){if(e.button===btn){e.preventDefault();if(window.parent!==window)window.parent.postMessage({type:"sharkord-ptt",pressed:false},"*");}},true);}',
-    'if(pttBinding&&String(pttBinding).indexOf("Key")===0){var keyCode=String(pttBinding);',
+    'if(pttBinding&&String(pttBinding).indexOf("Mouse")!==0){var keyCode=String(pttBinding);',
     'document.addEventListener("keydown",function(e){if(e.code===keyCode){e.preventDefault();e.stopPropagation();if(window.parent!==window)window.parent.postMessage({type:"sharkord-ptt",pressed:true},"*");}},true);',
     'document.addEventListener("keyup",function(e){if(e.code===keyCode){e.preventDefault();e.stopPropagation();if(window.parent!==window)window.parent.postMessage({type:"sharkord-ptt",pressed:false},"*");}},true);}',
     // Per-process audio: wrap getDisplayMedia once, check __sharkordProcessAudioPid at call time
@@ -259,16 +259,9 @@ let pttBackgroundStop: (() => void) | null = null;
 
 function setPttPressed(pressed: boolean): void {
   pttPressed = pressed;
-}
-
-function registerPttGlobalShortcut(): void {
-  /* No-op; background PTT is started on window blur (Windows only). */
-}
-
-function unregisterPttGlobalShortcut(): void {
-  if (pttBackgroundStop) {
-    pttBackgroundStop();
-    pttBackgroundStop = null;
+  // Notify renderer so the PTT indicator can update (important for background poll)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('ptt-state-change', pressed);
   }
 }
 
@@ -607,7 +600,6 @@ app.whenReady().then(async () => {
   setupMediaPermissions();
   Menu.setApplicationMenu(buildMenu());
   createMainWindow();
-  registerPttGlobalShortcut();
 
   // Log WebRTC codec capabilities from renderer
   if (mainWindow) {
@@ -646,7 +638,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-  unregisterPttGlobalShortcut();
+  stopPttBackgroundPoll();
 });
 
 // IPC handlers for preload
@@ -858,12 +850,10 @@ ipcMain.handle('get-device-preferences', () => getDevicePreferences());
 ipcMain.handle('set-device-preferences', (_event, prefs: DevicePreferences) => {
   setDevicePreferences(prefs ?? {});
   injectDevicePrefsIntoFrames();
-  registerPttGlobalShortcut();
 });
 
 ipcMain.handle('request-apply-device-preferences', () => {
   injectDevicePrefsIntoFrames();
-  registerPttGlobalShortcut();
 });
 
 ipcMain.handle('ptt-state', (_event, pressed: boolean) => {

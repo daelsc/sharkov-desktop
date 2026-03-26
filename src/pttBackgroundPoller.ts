@@ -21,6 +21,45 @@ export function pttBindingToVk(binding: string): number | null {
     if (n === 4) return 0x06; // VK_XBUTTON2 (forward)
     return null;
   }
+  // Map of raw e.code names (also used as Key-prefixed suffix) to VK codes
+  const special: Record<string, number> = {
+    Space: 0x20,
+    Enter: 0x0d,
+    Tab: 0x09,
+    Escape: 0x1b,
+    Backspace: 0x08,
+    ShiftLeft: 0xa0,
+    ShiftRight: 0xa1,
+    ControlLeft: 0xa2,
+    ControlRight: 0xa3,
+    AltLeft: 0xa4,
+    AltRight: 0xa5,
+    CapsLock: 0x14,
+    NumLock: 0x90,
+    ScrollLock: 0x91,
+    ArrowLeft: 0x25,
+    ArrowUp: 0x26,
+    ArrowRight: 0x27,
+    ArrowDown: 0x28,
+    Home: 0x24,
+    End: 0x23,
+    PageUp: 0x21,
+    PageDown: 0x22,
+    Insert: 0x2d,
+    Delete: 0x2e
+  };
+  // Handle raw e.code values (no Key prefix): Space, ShiftLeft, Digit0, F1, etc.
+  if (s in special) return special[s];
+  if (s.startsWith('Digit') && s.length === 6) return 0x30 + parseInt(s.slice(5), 10);
+  if (s.startsWith('Numpad')) {
+    const num = parseInt(s.slice(6), 10);
+    if (num >= 0 && num <= 9) return 0x60 + num;
+  }
+  if (/^F\d{1,2}$/.test(s)) {
+    const n = parseInt(s.slice(1), 10);
+    if (n >= 1 && n <= 24) return 0x70 + (n - 1);
+  }
+  // Handle Key-prefixed format: KeyA, KeySpace, etc.
   if (s.startsWith('Key')) {
     const key = s.slice(3);
     if (key.length === 1) {
@@ -28,39 +67,15 @@ export function pttBindingToVk(binding: string): number | null {
       if (upper >= 'A' && upper <= 'Z') return upper.charCodeAt(0); // 0x41-0x5A
       if (upper >= '0' && upper <= '9') return upper.charCodeAt(0); // 0x30-0x39
     }
-    const special: Record<string, number> = {
-      Space: 0x20,
-      Enter: 0x0d,
-      Tab: 0x09,
-      Escape: 0x1b,
-      Backspace: 0x08,
-      ShiftLeft: 0xa0,
-      ShiftRight: 0xa1,
-      ControlLeft: 0xa2,
-      ControlRight: 0xa3,
-      AltLeft: 0xa4,
-      AltRight: 0xa5,
-      CapsLock: 0x14,
-      ArrowLeft: 0x25,
-      ArrowUp: 0x26,
-      ArrowRight: 0x27,
-      ArrowDown: 0x28,
-      Home: 0x24,
-      End: 0x23,
-      PageUp: 0x21,
-      PageDown: 0x22,
-      Insert: 0x2d,
-      Delete: 0x2e
-    };
     if (key in special) return special[key];
     if (key.startsWith('Digit') && key.length === 6) return 0x30 + parseInt(key.slice(5), 10);
     if (key.startsWith('Numpad')) {
       const num = parseInt(key.slice(6), 10);
-      if (num >= 0 && num <= 9) return 0x60 + num; // VK_NUMPAD0-9
+      if (num >= 0 && num <= 9) return 0x60 + num;
     }
-    if (key.startsWith('F') && key.length >= 2) {
+    if (/^F\d{1,2}$/.test(key)) {
       const n = parseInt(key.slice(1), 10);
-      if (n >= 1 && n <= 12) return 0x70 + (n - 1);
+      if (n >= 1 && n <= 24) return 0x70 + (n - 1);
     }
   }
   return null;
