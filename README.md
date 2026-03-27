@@ -12,3 +12,18 @@ Integrated communities button. View a range of servers that welcome people to jo
 
 Clientside input settings gives you more control on which devices a server can see and interact with. Use push to talk to prevent annoying background noise from bothering your friends!
 <img width="1920" height="1017" alt="{03B2CCFE-54F6-4B93-B4A1-514280D38B29}" src="https://github.com/user-attachments/assets/c4c26de1-ac3a-47c5-81e1-d437aa048c4a" />
+
+## Privacy
+
+Sharkord Desktop does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.
+
+## Code Signing Policy
+
+Releases are signed using a certificate provided by [SignPath Foundation](https://signpath.org).
+
+**Roles:**
+- **Author & Approver:** [daelsc](https://github.com/daelsc)
+
+All signed releases are built from this public repository using GitHub Actions. Only commits to the `main` branch are eligible for signing.
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).

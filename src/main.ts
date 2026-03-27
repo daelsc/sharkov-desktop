@@ -560,9 +560,6 @@ app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('force-fieldtrials',
-  'WebRTC-DisableAdaptiveScaling/Enabled/' +
-  'WebRTC-LockResolution/Enabled/' +
-  'WebRTC-LockFramerate/Enabled/' +
   'WebRTC-H264-SpsPpsIdrIsH264Keyframe/Enabled/'
 );
 
