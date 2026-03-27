@@ -81,8 +81,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Zip portable directory
+        run: Compress-Archive -Path out\win-unpacked\* -DestinationPath "out\Sharkord.${{ steps.version.outputs.version }}.zip"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
           name: sharkorddesktop-${{ steps.version.outputs.version }}
-          path: out/*.exe
+          path: |
+            out/*.exe
+            out/*.zip
