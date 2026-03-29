@@ -47,13 +47,3 @@ Clientside input settings gives you more control on which devices a server can s
 
 Sharkord Desktop does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.
 
-## Code Signing Policy
-
-Releases are signed using a certificate provided by [SignPath Foundation](https://signpath.org).
-
-**Roles:**
-- **Author & Approver:** [daelsc](https://github.com/daelsc)
-
-All signed releases are built from this public repository using GitHub Actions. Only commits to the `main` branch are eligible for signing.
-
-Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
