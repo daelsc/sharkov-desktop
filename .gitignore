@@ -4,3 +4,4 @@ out
 node
 LICENSE
 README.md
+static/buildId.json

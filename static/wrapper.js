@@ -52,6 +52,8 @@
       });
     } else if (e.data.type === 'sharkord-stop-process-audio' && api && api.stopProcessAudioCapture) {
       api.stopProcessAudioCapture();
+    } else if (e.data.type === 'sharkord-rtc-stats' && e.data.report) {
+      if (api && api.logRtcStats) api.logRtcStats(e.data.report);
     } else if (e.data.type === 'sharkord-copy-to-clipboard' && typeof e.data.text === 'string') {
       openCopyTextModal(e.data.text);
     } else if (e.data.type === 'sharkord-iframe-contextmenu' && typeof e.data.url === 'string') {
@@ -90,7 +92,7 @@
     pttKeyBinding = null;
     api.getDevicePreferences().then(function (prefs) {
       var ptt = prefs && prefs.pttBinding;
-      if (!ptt || String(ptt).indexOf('Key') !== 0) return;
+      if (!ptt || String(ptt).indexOf('Mouse') === 0) return;
       pttKeyBinding = ptt;
       pttKeyDownHandler = function (e) {
         if (e.code === pttKeyBinding) {
@@ -738,8 +740,12 @@
     if (api && api.getAppVersion) {
       var verLabel = document.createElement('div');
       verLabel.className = 'sidebar-version';
-      api.getAppVersion().then(function (v) {
-        if (v) verLabel.textContent = 'v' + v;
+      Promise.all([
+        api.getAppVersion(),
+        api.getBuildId ? api.getBuildId() : Promise.resolve('')
+      ]).then(function (results) {
+        var v = results[0]; var bid = results[1];
+        if (v) verLabel.textContent = 'v' + v + (bid ? ' (' + bid + ')' : '');
       });
       footer.appendChild(verLabel);
     }
@@ -1244,6 +1250,21 @@
       var key = binding.slice(3);
       return key.length === 1 ? key : key;
     }
+    var friendly = {
+      BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';',
+      Quote: "'", Comma: ',', Period: '.', Slash: '/', Backquote: '`',
+      Minus: '-', Equal: '=', Space: 'Space', Enter: 'Enter', Tab: 'Tab',
+      Backspace: 'Backspace', ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift',
+      ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl',
+      AltLeft: 'Left Alt', AltRight: 'Right Alt', CapsLock: 'Caps Lock',
+      ArrowLeft: '←', ArrowUp: '↑', ArrowRight: '→', ArrowDown: '↓',
+      Home: 'Home', End: 'End', PageUp: 'Page Up', PageDown: 'Page Down',
+      Insert: 'Insert', Delete: 'Delete', Escape: 'Esc'
+    };
+    if (friendly[binding]) return friendly[binding];
+    if (binding.indexOf('Digit') === 0) return binding.slice(5);
+    if (binding.indexOf('Numpad') === 0) return 'Numpad ' + binding.slice(6);
+    if (binding.indexOf('F') === 0 && binding.length <= 3) return binding;
     return binding;
   }
 
@@ -1292,8 +1313,8 @@
       }
       e.preventDefault();
       e.stopPropagation();
-      var code = e.code || (e.key.length === 1 ? 'Key' + e.key.toUpperCase() : e.key);
-      if (code.indexOf('Key') === 0) stopListening(code);
+      var code = e.code || e.key;
+      stopListening(code);
     }
 
     function onMouse(e) {
@@ -1718,9 +1739,13 @@
     });
     if (api.onOpenAboutModal) {
       api.onOpenAboutModal(function () {
-        api.getAppVersion().then(function (v) {
+        Promise.all([
+          api.getAppVersion(),
+          api.getBuildId ? api.getBuildId() : Promise.resolve('')
+        ]).then(function (results) {
+          var v = results[0]; var bid = results[1];
           var el = document.getElementById('about-version');
-          if (el) el.textContent = v ? 'Version ' + v : '';
+          if (el) el.textContent = (v ? 'Version ' + v : '') + (bid ? '\nBuild: ' + bid : '');
           modal.classList.add('open');
         });
       });
@@ -2053,4 +2078,84 @@
       }
     });
   }
+
+  // --- Floating bitrate selector bar ---
+  if (api && api.getVideoBitrate && container) {
+    var bitrateBar = document.createElement('div');
+    bitrateBar.id = 'bitrate-bar';
+    bitrateBar.style.cssText = 'position:absolute;top:6px;left:10px;z-index:100;display:flex;align-items:center;gap:6px;background:rgba(24,24,27,0.85);border:1px solid #3f3f46;border-radius:6px;padding:3px 8px;backdrop-filter:blur(6px);';
+    var bitrateLabel = document.createElement('span');
+    bitrateLabel.textContent = 'Bitrate';
+    bitrateLabel.style.cssText = 'font-size:11px;color:#a1a1aa;';
+    var bitrateSelect = document.createElement('select');
+    bitrateSelect.style.cssText = 'background:#27272a;color:#e4e4e7;border:1px solid #3f3f46;border-radius:4px;font-size:11px;padding:2px 4px;cursor:pointer;outline:none;';
+    var bitrateOptions = [
+      { label: 'Auto', value: 0 },
+      { label: '1 Mbps', value: 1000 },
+      { label: '2 Mbps', value: 2000 },
+      { label: '4 Mbps', value: 4000 },
+      { label: '6 Mbps', value: 6000 },
+      { label: '8 Mbps', value: 8000 },
+      { label: '10 Mbps', value: 10000 },
+      { label: '15 Mbps', value: 15000 }
+    ];
+    bitrateOptions.forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      bitrateSelect.appendChild(o);
+    });
+    api.getVideoBitrate().then(function (kbps) {
+      bitrateSelect.value = String(kbps || 0);
+    });
+    bitrateSelect.addEventListener('change', function () {
+      var kbps = parseInt(bitrateSelect.value, 10) || 0;
+      var bps = kbps * 1000;
+      if (api.setVideoBitrate) api.setVideoBitrate(kbps);
+      var frames = document.querySelectorAll('.client-frame');
+      frames.forEach(function (frame) {
+        try {
+          if (frame.contentWindow) {
+            frame.contentWindow.postMessage({ type: 'sharkord-set-video-bitrate', bps: bps }, '*');
+          }
+        } catch (_) {}
+      });
+    });
+    var codecLabel = document.createElement('span');
+    codecLabel.textContent = 'Codec';
+    codecLabel.style.cssText = 'font-size:11px;color:#a1a1aa;margin-left:8px;';
+    var codecSelect = document.createElement('select');
+    codecSelect.style.cssText = 'background:#27272a;color:#e4e4e7;border:1px solid #3f3f46;border-radius:4px;font-size:11px;padding:2px 4px;cursor:pointer;outline:none;';
+    ['H264', 'VP8', 'VP9', 'AV1'].forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c;
+      o.textContent = c;
+      codecSelect.appendChild(o);
+    });
+    if (api.getVideoCodec) {
+      api.getVideoCodec().then(function (codec) {
+        codecSelect.value = codec || 'H264';
+      });
+    }
+    codecSelect.addEventListener('change', function () {
+      var codec = codecSelect.value;
+      if (api.setVideoCodec) api.setVideoCodec(codec);
+      var frames = document.querySelectorAll('.client-frame');
+      frames.forEach(function (frame) {
+        try {
+          if (frame.contentWindow) {
+            frame.contentWindow.postMessage({ type: 'sharkord-set-video-codec', codec: codec }, '*');
+          }
+        } catch (_) {}
+      });
+    });
+
+    bitrateBar.appendChild(bitrateLabel);
+    bitrateBar.appendChild(bitrateSelect);
+    bitrateBar.appendChild(codecLabel);
+    bitrateBar.appendChild(codecSelect);
+    container.style.position = 'relative';
+    container.appendChild(bitrateBar);
+  }
+
 })();

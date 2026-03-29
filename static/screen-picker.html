@@ -162,6 +162,17 @@
           item.addEventListener('click', () => selectSource(item));
           grid.appendChild(item);
         });
+
+        // Auto-select EscapeFromTarkov / EscapeFromTarkovArena if present
+        var items = grid.querySelectorAll('.source-item');
+        for (var i = 0; i < items.length; i++) {
+          var n = (items[i].dataset.name || '').toLowerCase();
+          if (n.indexOf('escapefromtarkov') === 0) {
+            selectSource(items[i]);
+            items[i].scrollIntoView({ block: 'center' });
+            break;
+          }
+        }
       });
 
       function selectSource(item) {

@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('sharkordDesktop', {
     ipcRenderer.on('open-about-modal', () => callback());
   },
   getAppVersion: () => ipcRenderer.invoke('get-app-version') as Promise<string>,
+  getBuildId: () => ipcRenderer.invoke('get-build-id') as Promise<string>,
   onNavigate: (callback: (url: string) => void) => {
     ipcRenderer.on('wrapper-navigate', (_event, url: string) => callback(url));
   },
@@ -78,5 +79,10 @@ contextBridge.exposeInMainWorld('sharkordDesktop', {
     ipcRenderer.on('process-audio-chunk', (_event, buffer: ArrayBuffer) => {
       callback(buffer);
     });
-  }
+  },
+  logRtcStats: (report: unknown) => ipcRenderer.invoke('log-rtc-stats', report),
+  getVideoBitrate: () => ipcRenderer.invoke('get-video-bitrate') as Promise<number>,
+  setVideoBitrate: (kbps: number) => ipcRenderer.invoke('set-video-bitrate', kbps),
+  getVideoCodec: () => ipcRenderer.invoke('get-video-codec') as Promise<string>,
+  setVideoCodec: (codec: string) => ipcRenderer.invoke('set-video-codec', codec),
 });
