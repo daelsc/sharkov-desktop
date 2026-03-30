@@ -65,7 +65,8 @@
       {
         "provider": "github",
         "owner": "daelsc",
-        "repo": "sharkov-desktop"
+        "repo": "sharkov-desktop",
+        "releaseType": "release"
       }
     ]
   }
