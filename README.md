@@ -11,17 +11,17 @@ Integrated communities button. View a range of servers that welcome people to jo
 Clientside input settings gives you more control on which devices a server can see and interact with. Use push to talk to prevent annoying background noise from bothering your friends!
 <img width="1920" height="1017" alt="{03B2CCFE-54F6-4B93-B4A1-514280D38B29}" src="https://github.com/user-attachments/assets/c4c26de1-ac3a-47c5-81e1-d437aa048c4a" />
 
-## Recent Changes (2026-03-28)
+## Features (added in Sharkov fork)
 
 ### Streaming & WebRTC
 - **Forced H264 encoding** via `setCodecPreferences` — uses hardware encoders automatically (NVENC on NVIDIA, AMF on AMD, QSV on Intel, OpenH264 software fallback)
 - **Codec selector UI** — dropdown in top-left bar lets users choose H264 (default), VP8, VP9, or AV1. Preference is persisted
-- **Forced bitrate** — sets `minBitrate = maxBitrate` on WebRTC encodings plus SDP `b=AS:` bandwidth to bypass the bandwidth estimator. Default 5 Mbps
+- **Forced bitrate** — sets `maxBitrate` on WebRTC encodings plus SDP `b=AS:` bandwidth to bypass the bandwidth estimator. Default 5 Mbps
 - **Bitrate selector UI** — dropdown in top-left bar (Auto, 1-15 Mbps). Changes apply live to active streams
 - **`degradationPreference: maintain-resolution`** — prevents the encoder from dropping resolution under congestion
 - **Default screen share: 1080p 60fps** — `getDisplayMedia` constraints injected with `{ideal: 1920}x{ideal: 1080}@{ideal: 60}`
 - **Chromium flags** — enabled `WebRtcH264WithOpenH264FFmpeg`, `enable-gpu-rasterization`, `WebRTC-Video-Pacing`
-- **WebRTC stats** — now resolve actual codec `mimeType` (e.g. `video/H264`) and `encoderImplementation` (e.g. `NVIDIA H.264 Encoder MFT`)
+- **WebRTC stats** — resolves actual codec `mimeType` (e.g. `video/H264`) and `encoderImplementation` (e.g. `NVIDIA H.264 Encoder MFT`)
 
 ### Screen Sharing
 - **Auto-select EscapeFromTarkov** — screen picker pre-selects EFT/Arena window if running (user still clicks Share to confirm)
@@ -29,23 +29,31 @@ Clientside input settings gives you more control on which devices a server can s
 
 ### Push-to-Talk
 - **All keyboard keys supported** — PTT key capture now accepts any `e.code` (BracketLeft, Semicolon, Slash, etc.), not just `Key`-prefixed codes
-- **Background poller VK mappings** — added Windows virtual key codes for `[ ] \ ; ' , . / \` - =` so PTT works when app is unfocused
+- **Background poller VK mappings** — added Windows virtual key codes for `[ ] \ ; ' , . / ` - =` so PTT works when app is unfocused
 - **Friendly display names** — shows `[` instead of `BracketLeft`, `Left Shift` instead of `ShiftLeft`, etc.
 
-### Build
-- **Build ID timestamp** — format is now `{gitHash}.{MMDD}.{HHMM}` (e.g. `755f554.0328.2143`) for unique identification without new commits
+### Auto-Update
+- **electron-updater** checks GitHub Releases on launch, downloads in background, prompts user to restart
+- Uses `NsisUpdater` directly (not the default `autoUpdater`) to avoid redirect issues with the custom NVENC-patched Electron build
+- Code signature verification is disabled since builds are not code-signed
+- Only works with the **NSIS installer** version, not the portable exe
 
 ### Known Issues / TODO
-- `minBitrate` is not in the WebRTC spec — Chromium silently ignores it. The stable bitrate comes from the other changes (H264/NVENC, `degradationPreference`, SDP `b=AS:`), not from `minBitrate`
+- `minBitrate` is not in the WebRTC spec — Chromium silently ignores it. The stable bitrate comes from H264/NVENC, `degradationPreference`, and SDP `b=AS:`
 - Process audio resampler has a boundary interpolation bug at packet edges when upsampling — may cause minor audio glitches
 - `getClipboardText` and `downloadUrl` IPC handlers are missing from preload — paste and image download in iframe context menu are non-functional
 - AudioContext is leaked on each `getUserMedia` call with volume adjustment (browsers limit ~6-8)
 
 ## Building & Releasing
 
+### Prerequisites
+- Node.js 20+
+- `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify)
+- Git config set: `user.name` and `user.email` (set in repo with `git config`)
+
 ### Local Development
 ```
-npm install                  # install dependencies
+npm install                  # install dependencies (includes custom NVENC Electron)
 npm run build                # compile TypeScript + minify wrapper
 npm run dev                  # build and launch the app
 npm run pack                 # build + package NSIS installer + portable exe into out/
@@ -53,20 +61,34 @@ npm run pack                 # build + package NSIS installer + portable exe int
 
 ### Publishing a Release
 Run `release.bat` from the project folder. It will:
-1. Prompt for a version number (e.g. `0.0.7`)
-2. Update `package.json` with the new version
-3. Build the NSIS installer (`out/Sharkov Setup X.X.X.exe`) and generate `out/latest.yml`
-4. Commit the version bump and push to GitHub
-5. Create a GitHub Release on `daelsc/sharkov-desktop` and upload the installer + `latest.yml`
+1. Auto-increment version from `.buildcount` (e.g. `0.1.52`, `0.1.53`, ...)
+2. Build the NSIS installer and generate `latest.yml` + blockmap
+3. Copy installer with hyphenated filename (GitHub mangles spaces in uploads)
+4. Prompt to confirm the release
+5. Commit version bump and push to GitHub
+6. Create a GitHub Release on `daelsc/sharkov-desktop`
+7. Upload installer, blockmap (for differential updates), and `latest.yml`
 
-Requires `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify).
+### How Auto-Update Works
+1. App launches → `NsisUpdater` checks `latest.yml` from the latest GitHub Release
+2. If a newer version exists, it downloads the installer in the background
+3. User gets a dialog: "Restart Now" or "Later"
+4. On restart (or next quit), the NSIS installer runs silently and relaunches the app
 
-### Auto-Update
-The app uses `electron-updater` to check for updates from GitHub Releases on launch. When a new version is found, it downloads in the background and prompts the user to restart. This only works with the **NSIS installer** version, not the portable exe.
+**Important files:**
+- `latest.yml` — tells the updater what version is available and the download URL
+- `.blockmap` — enables differential updates (only download changed bytes). Without it, falls back to full download (~111MB)
+- Asset filenames must use **hyphens** not spaces (e.g. `Sharkov-Setup-0.1.51.exe`) — `release.bat` handles this automatically
 
-The `latest.yml` file in the release is what tells the updater a new version is available — always upload it alongside the installer.
+**Updater log:** `%APPDATA%\sharkov-desktop\updater.log` — check this if updates aren't working
+
+### Architecture Notes
+- The app wraps Sharkord web app in an Electron iframe and injects JavaScript to control WebRTC, device selection, PTT, and screen sharing
+- Internal message types (`sharkord-ptt`, `sharkord-set-video-bitrate`, etc.) use the original `sharkord` prefix for compatibility with the server iframe protocol
+- User-visible strings use `Sharkov`
+- Uses a [custom NVENC-patched Electron](https://github.com/steveseguin/electroncapture) build for hardware H264 encoding in WebRTC
+- Native C++ addon (`native/`) provides per-process audio capture via Windows `AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` API
 
 ## Privacy
 
-Sharkord Desktop does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.
-
+Sharkov does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.

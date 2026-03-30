@@ -22,7 +22,8 @@ call npm run build
 if errorlevel 1 goto err
 
 echo.
-echo Packaging...
+echo Packaging (clean)...
+if exist "out\win-unpacked" rmdir /s /q "out\win-unpacked"
 call npx electron-builder --win nsis --x64
 if errorlevel 1 goto err
 
@@ -36,9 +37,16 @@ if not exist "out\latest.yml" (
     goto err
 )
 
+:: Copy files with hyphenated names for GitHub (spaces get mangled on upload)
+copy "out\Sharkov Setup %NEW_VER%.exe" "out\Sharkov-Setup-%NEW_VER%.exe" >nul
+if exist "out\Sharkov Setup %NEW_VER%.exe.blockmap" (
+    copy "out\Sharkov Setup %NEW_VER%.exe.blockmap" "out\Sharkov-Setup-%NEW_VER%.exe.blockmap" >nul
+)
+
 echo.
 echo Build complete:
-echo   out\Sharkov Setup %NEW_VER%.exe
+echo   out\Sharkov-Setup-%NEW_VER%.exe
+echo   out\Sharkov-Setup-%NEW_VER%.exe.blockmap
 echo   out\latest.yml
 echo.
 
@@ -62,9 +70,13 @@ if errorlevel 1 (
     goto err
 )
 
-:: Upload assets
+:: Upload assets (hyphenated names to match latest.yml expectations)
 echo Uploading installer...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov Setup %NEW_VER%.exe"
+wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov-Setup-%NEW_VER%.exe"
+echo Uploading blockmap...
+if exist "out\Sharkov-Setup-%NEW_VER%.exe.blockmap" (
+    wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov-Setup-%NEW_VER%.exe.blockmap"
+)
 echo Uploading latest.yml...
 wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/latest.yml"
 
