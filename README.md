@@ -1,8 +1,6 @@
-# Sharkord Desktop
+# Sharkov
 
-Electron desktop app for [Sharkord](https://github.com/sharkord/sharkord). Use Sharkord outside of the browser. Features communites, clientside input settings, and multi server support!
-
-**Credits.** Sharkord is by [Diogo Martino](https://github.com/sharkord/sharkord). This desktop client is unofficial and not affiliated with the Sharkord project.
+Sharkov is a fork of [Sharkord Desktop](https://github.com/Bugel/sharkorddesktop) — an Electron desktop app for [Sharkord](https://github.com/sharkord/sharkord), a self-hosted voice, video, and text chat platform by [Diogo Martino](https://github.com/sharkord/sharkord).
 
 All of your Sharkord servers in one app. With multiserver support and the keep connected toggle, chatting between multiple servers is easy!
 <img width="1920" height="1018" alt="{FA9B7FAB-FFFF-4CC7-B68F-0FB58534E67D}" src="https://github.com/user-attachments/assets/03bcc7c1-9059-4ad6-a114-1b89024e5114" />
@@ -57,9 +55,9 @@ npm run pack                 # build + package NSIS installer + portable exe int
 Run `release.bat` from the project folder. It will:
 1. Prompt for a version number (e.g. `0.0.7`)
 2. Update `package.json` with the new version
-3. Build the NSIS installer (`out/Sharkord Setup X.X.X.exe`) and generate `out/latest.yml`
+3. Build the NSIS installer (`out/Sharkov Setup X.X.X.exe`) and generate `out/latest.yml`
 4. Commit the version bump and push to GitHub
-5. Create a GitHub Release on `daelsc/sharkorddesktop` and upload the installer + `latest.yml`
+5. Create a GitHub Release on `daelsc/sharkov` and upload the installer + `latest.yml`
 
 Requires `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify).
 

@@ -1,4 +1,4 @@
-name: Build Desktop App
+name: Build Sharkov Desktop
 
 on:
   push:
@@ -67,7 +67,7 @@ jobs:
         run: |
           $src = "node_modules\electron\dist"
           $dst = "out\win-unpacked"
-          Copy-Item "$src\electron.exe" "$dst\Sharkord.exe" -Force
+          Copy-Item "$src\electron.exe" "$dst\Sharkov.exe" -Force
           Get-ChildItem "$src\*.dll" | Copy-Item -Destination "$dst" -Force
           Get-ChildItem "$src\*.bin" | Copy-Item -Destination "$dst" -Force
           Get-ChildItem "$src\*.pak" | Copy-Item -Destination "$dst" -Force
@@ -82,12 +82,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Zip portable directory
-        run: Compress-Archive -Path out\win-unpacked\* -DestinationPath "out\Sharkord.${{ steps.version.outputs.version }}.zip"
+        run: Compress-Archive -Path out\win-unpacked\* -DestinationPath "out\Sharkov.${{ steps.version.outputs.version }}.zip"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: sharkorddesktop-${{ steps.version.outputs.version }}
+          name: sharkov-${{ steps.version.outputs.version }}
           path: |
             out/*.exe
             out/*.zip

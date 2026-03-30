@@ -39,8 +39,8 @@ if errorlevel 1 goto err
 
 echo.
 echo Done. Output is in the "out" folder.
-echo   - Portable EXE (single file):  out\Sharkord X.X.X.exe
-echo   - Installer:                    out\Sharkord X.X.X Setup.exe
+echo   - Portable EXE (single file):  out\Sharkov X.X.X.exe
+echo   - Installer:                    out\Sharkov X.X.X Setup.exe
 goto end
 
 :err

@@ -116,7 +116,7 @@ function createMainWindow(): void {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Sharkord Desktop',
+    title: 'Sharkov Desktop',
     ...(winIcon && { icon: winIcon }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -224,7 +224,7 @@ function getDevicePrefsInjectionCode(): string {
     'window.addEventListener("message",onPcm);',
     'dest.stream.getAudioTracks().forEach(function(t){stream.addTrack(t);});',
     'var vt=stream.getVideoTracks();if(vt.length>0){vt[0].addEventListener("ended",function(){window.removeEventListener("message",onPcm);window.parent.postMessage({type:"sharkord-stop-process-audio"},"*");node.disconnect();actx.close();});}',
-    'return stream;}).catch(function(err){console.error("[Sharkord] AudioWorklet setup failed:",err);return stream;});});}}}',
+    'return stream;}).catch(function(err){console.error("[Sharkov] AudioWorklet setup failed:",err);return stream;});});}}}',
     '})();'
   ].join('');
 }
@@ -614,7 +614,7 @@ function createAboutWindow(): void {
     width: 380,
     height: 240,
     resizable: false,
-    title: 'About Sharkord Desktop',
+    title: 'About Sharkov Desktop',
     parent: mainWindow ?? undefined,
     modal: mainWindow !== null,
     webPreferences: {
@@ -648,10 +648,10 @@ function clearAllSavedServers(): void {
 function buildMenu(): Menu {
   return Menu.buildFromTemplate([
     {
-      label: 'Sharkord Desktop',
+      label: 'Sharkov Desktop',
       submenu: [
         {
-          label: 'About Sharkord Desktop',
+          label: 'About Sharkov Desktop',
           click: () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
               mainWindow.webContents.send('open-about-modal');

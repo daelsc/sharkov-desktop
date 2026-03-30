@@ -1,4 +1,4 @@
-# Setup portable Sharkord Desktop: download Node.js into this directory and install deps.
+# Setup portable Sharkov Desktop: download Node.js into this directory and install deps.
 # Run once. After this, use run.ps1 or run.bat (no global Node/npm needed).
 # Requires: PowerShell 5+ and internet.
 
@@ -11,7 +11,7 @@ $NodeZip   = Join-Path $DesktopDir "node.zip"
 $NodeVersion = "v20.18.0"
 $NodeZipUrl  = "https://nodejs.org/dist/$NodeVersion/node-$NodeVersion-win-x64.zip"
 
-Write-Host "Sharkord Desktop - Portable setup" -ForegroundColor Cyan
+Write-Host "Sharkov Desktop - Portable setup" -ForegroundColor Cyan
 Write-Host "Directory: $DesktopDir"
 Write-Host ""
 
@@ -21,12 +21,12 @@ if (Test-Path $NodeDir) {
     if ($overwrite -ne "y" -and $overwrite -ne "Y") {
         Write-Host "Skipping Node download."
     } else {
-        Write-Host "Close Sharkord Desktop and any other apps using Node, then we'll remove the old node folder."
+        Write-Host "Close Sharkov Desktop and any other apps using Node, then we'll remove the old node folder."
         try {
             Remove-Item -Recurse -Force $NodeDir -ErrorAction Stop
         } catch {
             Write-Host "Could not remove node folder: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Close Sharkord Desktop (and any terminals in this folder), then run this script again." -ForegroundColor Yellow
+            Write-Host "Close Sharkov Desktop (and any terminals in this folder), then run this script again." -ForegroundColor Yellow
             exit 1
         }
     }

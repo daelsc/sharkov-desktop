@@ -19,8 +19,8 @@ const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'
 const ver = pkg.version;
 
 const renames = [
-  [`Sharkord ${ver}.exe`, `Sharkord ${ver}-${buildId}.exe`],
-  [`Sharkord Setup ${ver}.exe`, `Sharkord Setup ${ver}-${buildId}.exe`],
+  [`Sharkov ${ver}.exe`, `Sharkov ${ver}-${buildId}.exe`],
+  [`Sharkov Setup ${ver}.exe`, `Sharkov Setup ${ver}-${buildId}.exe`],
 ];
 
 for (const [from, to] of renames) {

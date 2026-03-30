@@ -27,8 +27,8 @@ call npx electron-builder --win nsis --x64
 if errorlevel 1 goto err
 
 :: Check output files exist
-if not exist "out\Sharkord Setup %NEW_VER%.exe" (
-    echo ERROR: Installer not found at out\Sharkord Setup %NEW_VER%.exe
+if not exist "out\Sharkov Setup %NEW_VER%.exe" (
+    echo ERROR: Installer not found at out\Sharkov Setup %NEW_VER%.exe
     goto err
 )
 if not exist "out\latest.yml" (
@@ -38,7 +38,7 @@ if not exist "out\latest.yml" (
 
 echo.
 echo Build complete:
-echo   out\Sharkord Setup %NEW_VER%.exe
+echo   out\Sharkov Setup %NEW_VER%.exe
 echo   out\latest.yml
 echo.
 
@@ -56,7 +56,7 @@ git push origin main
 
 :: Create release via WSL gh
 echo Creating GitHub release...
-wsl -- gh release create "v%NEW_VER%" --repo daelsc/sharkorddesktop --title "v%NEW_VER%" --generate-notes
+wsl -- gh release create "v%NEW_VER%" --repo daelsc/sharkov --title "v%NEW_VER%" --generate-notes
 if errorlevel 1 (
     echo ERROR: Failed to create release. Check gh auth.
     goto err
@@ -64,13 +64,13 @@ if errorlevel 1 (
 
 :: Upload assets
 echo Uploading installer...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkorddesktop "./out/Sharkord Setup %NEW_VER%.exe"
+wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov "./out/Sharkov Setup %NEW_VER%.exe"
 echo Uploading latest.yml...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkorddesktop "./out/latest.yml"
+wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov "./out/latest.yml"
 
 echo.
 echo Release v%NEW_VER% published!
-echo https://github.com/daelsc/sharkorddesktop/releases/tag/v%NEW_VER%
+echo https://github.com/daelsc/sharkov/releases/tag/v%NEW_VER%
 goto end
 
 :err

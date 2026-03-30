@@ -1,4 +1,4 @@
-# Run Sharkord Desktop. Uses Node in this directory if present; otherwise system Node.
+# Run Sharkov Desktop. Uses Node in this directory if present; otherwise system Node.
 $ErrorActionPreference = "Stop"
 $DesktopDir = $PSScriptRoot
 $NodeDir    = Join-Path $DesktopDir "node"

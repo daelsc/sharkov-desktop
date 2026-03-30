@@ -36,7 +36,7 @@
     } else if (e.data.type === 'sharkord-start-process-audio' && e.data.pid && api && api.startProcessAudioCapture) {
       api.startProcessAudioCapture(e.data.pid).then(function (result) {
         if (result && !result.ok) {
-          console.error('[Sharkord] Process audio capture failed:', result.error);
+          console.error('[Sharkov] Process audio capture failed:', result.error);
           var activeFrame = document.querySelector('.client-frame.active');
           if (activeFrame && activeFrame.contentWindow) {
             try {
@@ -48,7 +48,7 @@
           }
         }
       }).catch(function (err) {
-        console.error('[Sharkord] Process audio capture error:', err);
+        console.error('[Sharkov] Process audio capture error:', err);
       });
     } else if (e.data.type === 'sharkord-stop-process-audio' && api && api.stopProcessAudioCapture) {
       api.stopProcessAudioCapture();
@@ -118,7 +118,7 @@
   if (!api || !api.getServers || !api.getServerUrl) {
     var fallback = document.createElement('iframe');
     fallback.className = 'client-frame active';
-    fallback.title = 'Sharkord';
+    fallback.title = 'Sharkov';
     fallback.allow = IFRAME_ALLOW;
     fallback.setAttribute('tabindex', '0');
     fallback.src = 'https://demo.sharkord.com';
@@ -197,7 +197,7 @@
       if (existingEmpty) existingEmpty.remove();
       var one = document.createElement('iframe');
       one.className = 'client-frame active';
-      one.title = 'Sharkord';
+      one.title = 'Sharkov';
       one.allow = IFRAME_ALLOW;
       one.setAttribute('tabindex', '0');
       focusActiveClientFrameOnLoad(one);
