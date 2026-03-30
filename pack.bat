@@ -1,51 +1,32 @@
 @echo off
 cd /d "%~dp0"
-set "DESKTOP=%~dp0"
-set "NODE_DIR=%DESKTOP%node"
-set "NPM_CLI=%NODE_DIR%\node_modules\npm\bin\npm-cli.js"
-
-if exist "%NODE_DIR%\node.exe" (
-    set "PATH=%NODE_DIR%;%PATH%"
-) else (
-    set "NPM_RUN=node"
-)
+set "NODE_DIR=%~dp0node"
+if exist "%NODE_DIR%\node.exe" set "PATH=%NODE_DIR%;%PATH%"
 
 if not exist "node_modules" (
     echo Installing dependencies...
-    if exist "%NODE_DIR%\node.exe" (
-        "%NODE_DIR%\node.exe" "%NPM_CLI%" install
-    ) else (
-        call npm install
-    )
+    call npm install
     if errorlevel 1 goto err
 )
 
-echo Building...
-if exist "%NODE_DIR%\node.exe" (
-    "%NODE_DIR%\node.exe" "%NPM_CLI%" run build
-) else (
-    call npm run build
-)
+echo Building for local testing (no publish)...
+call npm run build
 if errorlevel 1 goto err
 
 echo.
 echo Creating executable(s)...
-if exist "%NODE_DIR%\node.exe" (
-    "%NODE_DIR%\node.exe" "%NPM_CLI%" run pack
-) else (
-    call npm run pack
-)
+if exist "out\win-unpacked" rmdir /s /q "out\win-unpacked"
+call npx electron-builder --win nsis portable --x64
 if errorlevel 1 goto err
 
 echo.
-echo Done. Output is in the "out" folder.
-echo   - Portable EXE (single file):  out\Sharkov X.X.X.exe
-echo   - Installer:                    out\Sharkov X.X.X Setup.exe
+echo Done. Output in out\
+dir /b out\*.exe 2>nul
 goto end
 
 :err
 echo.
-echo Pack failed. If Node was not found, run setup-portable.bat first.
+echo Build failed.
 pause
 exit /b 1
 

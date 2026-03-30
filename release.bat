@@ -5,85 +5,69 @@ cd /d "%~dp0"
 set "NODE_DIR=%~dp0node"
 if exist "%NODE_DIR%\node.exe" set "PATH=%NODE_DIR%;%PATH%"
 
-:: Read build counter and increment
-for /f "tokens=*" %%i in ('node -e "var fs=require('fs');var c=0;try{c=parseInt(fs.readFileSync('.buildcount','utf8').trim(),10)||0;}catch(e){}console.log(c+1);"') do set "BUILD=%%i"
+:: Require GH_TOKEN
+if "%GH_TOKEN%"=="" (
+    echo ERROR: GH_TOKEN environment variable is not set.
+    echo Create a GitHub personal access token at https://github.com/settings/tokens
+    echo with "repo" scope, then set it: setx GH_TOKEN "ghp_yourtoken"
+    goto err
+)
 
-:: Version is 0.1.{build}
-set "NEW_VER=0.1.%BUILD%"
-echo Building version: %NEW_VER%
+:: Read current version, increment patch
+for /f "tokens=*" %%i in ('node -e "var p=require('./package.json');var v=p.version.split('.');v[2]=parseInt(v[2],10)+1;console.log(v.join('.'))"') do set "NEW_VER=%%i"
+echo.
+echo === Releasing v%NEW_VER% ===
+echo.
+
+:: Save old version for rollback
+for /f "tokens=*" %%i in ('node -e "console.log(require('./package.json').version)"') do set "OLD_VER=%%i"
 
 :: Update version in package.json
 node -e "var fs=require('fs');var p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='%NEW_VER%';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');"
 
-:: Build and package
-echo.
-echo Building...
+:: Build
+echo [1/4] Building...
 call npm run build
-if errorlevel 1 goto err
+if errorlevel 1 (
+    echo ERROR: Build failed.
+    goto rollback
+)
 
-echo.
-echo Packaging (clean)...
+:: Clean and package + publish in one step
+echo [2/4] Packaging and publishing to GitHub...
 if exist "out\win-unpacked" rmdir /s /q "out\win-unpacked"
-call npx electron-builder --win nsis --x64
-if errorlevel 1 goto err
-
-:: Check output files exist
-if not exist "out\Sharkov Setup %NEW_VER%.exe" (
-    echo ERROR: Installer not found at out\Sharkov Setup %NEW_VER%.exe
-    goto err
-)
-if not exist "out\latest.yml" (
-    echo ERROR: latest.yml not found in out\
-    goto err
+call npx electron-builder --win nsis --x64 --publish always
+if errorlevel 1 (
+    echo ERROR: electron-builder publish failed.
+    goto rollback
 )
 
-:: Copy files with hyphenated names for GitHub (spaces get mangled on upload)
-copy "out\Sharkov Setup %NEW_VER%.exe" "out\Sharkov-Setup-%NEW_VER%.exe" >nul
-if exist "out\Sharkov Setup %NEW_VER%.exe.blockmap" (
-    copy "out\Sharkov Setup %NEW_VER%.exe.blockmap" "out\Sharkov-Setup-%NEW_VER%.exe.blockmap" >nul
+:: Verify the release exists on GitHub
+echo [3/4] Verifying release...
+wsl -- gh release view "v%NEW_VER%" --repo daelsc/sharkov-desktop --json assets --jq ".assets | length" > nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Release v%NEW_VER% not found on GitHub after publish.
+    goto rollback
 )
 
-echo.
-echo Build complete:
-echo   out\Sharkov-Setup-%NEW_VER%.exe
-echo   out\Sharkov-Setup-%NEW_VER%.exe.blockmap
-echo   out\latest.yml
-echo.
-
-:: Confirm release
-set /p "CONFIRM=Create GitHub release v%NEW_VER%? (y/n): "
-if /i not "%CONFIRM%"=="y" (
-    echo Aborted. Files are in out\ if you want to release manually.
-    goto end
-)
-
-:: Commit version bump
-git add package.json package-lock.json
+:: Git commit (AFTER successful publish)
+echo [4/4] Committing version bump...
+git add package.json
 git commit -m "release: v%NEW_VER%"
 git push origin main
 
-:: Create release via WSL gh
-echo Creating GitHub release...
-wsl -- gh release create "v%NEW_VER%" --repo daelsc/sharkov-desktop --title "v%NEW_VER%" --generate-notes
-if errorlevel 1 (
-    echo ERROR: Failed to create release. Check gh auth.
-    goto err
-)
-
-:: Upload assets (hyphenated names to match latest.yml expectations)
-echo Uploading installer...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov-Setup-%NEW_VER%.exe"
-echo Uploading blockmap...
-if exist "out\Sharkov-Setup-%NEW_VER%.exe.blockmap" (
-    wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov-Setup-%NEW_VER%.exe.blockmap"
-)
-echo Uploading latest.yml...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/latest.yml"
-
 echo.
-echo Release v%NEW_VER% published!
+echo === Release v%NEW_VER% published successfully ===
 echo https://github.com/daelsc/sharkov-desktop/releases/tag/v%NEW_VER%
+echo.
+echo Users on the installed version will auto-update on next launch.
 goto end
+
+:rollback
+echo.
+echo Rolling back version to %OLD_VER%...
+node -e "var fs=require('fs');var p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='%OLD_VER%';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');"
+echo Version reverted to %OLD_VER%.
 
 :err
 echo.

@@ -6,10 +6,7 @@ import { pathToFileURL } from 'node:url';
 import * as processAudio from './processAudioBridge.js';
 
 function getBuildId(): string {
-  try {
-    const raw = readFileSync(path.join(__dirname, '..', 'static', 'buildId.json'), 'utf8');
-    return JSON.parse(raw).buildId;
-  } catch { return 'unknown'; }
+  return app.getVersion();
 }
 
 /** Resolve a window HWND to its owning process PID via user32.dll */
@@ -629,7 +626,7 @@ function createAboutWindow(): void {
     const el = aboutWindow?.webContents;
     if (el && !el.isDestroyed()) {
       el.executeJavaScript(
-        `(function(){var e=document.getElementById("about-version");if(e)e.textContent="Version ${app.getVersion()}\\nBuild: ${getBuildId()}";})();`
+        `(function(){var e=document.getElementById("about-version");if(e)e.textContent="Version ${app.getVersion()}";})();`
       ).catch(() => {});
     }
   });

@@ -61,11 +61,11 @@ Server source: `~/git/sharkord` (WSL) / [daelsc/sharkord](https://github.com/dae
 ## Building & Releasing
 
 ### Versioning
-Version format is `0.1.{build}` where `{build}` auto-increments from `.buildcount` file (local, not committed). The `.buildcount` file persists between builds. `release.bat` handles incrementing automatically.
+Version format is `0.1.{patch}` (e.g. `0.1.52`, `0.1.53`). `release.bat` auto-increments the patch number from the current `package.json` version.
 
 ### Prerequisites
 - Node.js 20+
-- `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify)
+- `GH_TOKEN` environment variable set to a GitHub personal access token with `repo` scope (create at https://github.com/settings/tokens, then `setx GH_TOKEN "ghp_yourtoken"`)
 - Git config set: `user.name` and `user.email` (set in repo with `git config`)
 
 ### Local Development
@@ -73,18 +73,18 @@ Version format is `0.1.{build}` where `{build}` auto-increments from `.buildcoun
 npm install                  # install dependencies (includes custom NVENC Electron)
 npm run build                # compile TypeScript + minify wrapper
 npm run dev                  # build and launch the app
-npm run pack                 # build + package NSIS installer + portable exe into out/
+pack.bat                     # build + package NSIS installer + portable exe into out/ (local only, no publish)
 ```
 
 ### Publishing a Release
 Run `release.bat` from the project folder. It will:
-1. Auto-increment version from `.buildcount` (e.g. `0.1.52`, `0.1.53`, ...)
-2. Build the NSIS installer and generate `latest.yml` + blockmap
-3. Copy installer with hyphenated filename (GitHub mangles spaces in uploads)
-4. Prompt to confirm the release
-5. Commit version bump and push to GitHub
-6. Create a GitHub Release on `daelsc/sharkov-desktop`
-7. Upload installer, blockmap (for differential updates), and `latest.yml`
+1. Increment patch version (0.1.52 → 0.1.53)
+2. Build TypeScript + minify
+3. Run `electron-builder --publish always` which creates the GitHub Release and uploads the installer, blockmap, and `latest.yml` in one atomic step
+4. If publish succeeds: commit version bump and push to git
+5. If publish fails: revert version and exit
+
+**Never manually create releases or upload files.** `release.bat` is the only way to publish. electron-builder handles filenames, blockmaps, and `latest.yml` correctly.
 
 ### How Auto-Update Works
 1. App launches → `NsisUpdater` checks `latest.yml` from the latest GitHub Release
@@ -92,17 +92,12 @@ Run `release.bat` from the project folder. It will:
 3. User gets a dialog: "Restart Now" or "Later"
 4. On restart (or next quit), the NSIS installer runs silently and relaunches the app
 
-**Important files:**
-- `latest.yml` — tells the updater what version is available and the download URL
-- `.blockmap` — enables differential updates (only download changed bytes). Without it, falls back to full download (~111MB)
-- Asset filenames must use **hyphens** not spaces (e.g. `Sharkov-Setup-0.1.51.exe`) — `release.bat` handles this automatically
-
 **Updater log:** `%APPDATA%\sharkov-desktop\updater.log` — check this if updates aren't working
 
-### Other Scripts
+### Scripts
 - `run.bat` / `run.ps1` — build and launch the app locally (dev mode)
-- `pack.bat` — build + package both NSIS installer and portable exe into `out/`
-- `release.bat` — full release workflow (build, package, publish to GitHub)
+- `pack.bat` — build + package locally (no publish, for testing)
+- `release.bat` — **the only way to publish** (build, publish to GitHub, commit)
 
 ### Architecture Notes
 - The app wraps Sharkord web app in an Electron iframe and injects JavaScript to control WebRTC, device selection, PTT, and screen sharing
