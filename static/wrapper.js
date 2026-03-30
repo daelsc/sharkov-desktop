@@ -740,12 +740,8 @@
     if (api && api.getAppVersion) {
       var verLabel = document.createElement('div');
       verLabel.className = 'sidebar-version';
-      Promise.all([
-        api.getAppVersion(),
-        api.getBuildId ? api.getBuildId() : Promise.resolve('')
-      ]).then(function (results) {
-        var v = results[0]; var bid = results[1];
-        if (v) verLabel.textContent = 'v' + v + (bid ? ' (' + bid + ')' : '');
+      api.getAppVersion().then(function (v) {
+        if (v) verLabel.textContent = 'v' + v;
       });
       footer.appendChild(verLabel);
     }
@@ -1739,13 +1735,9 @@
     });
     if (api.onOpenAboutModal) {
       api.onOpenAboutModal(function () {
-        Promise.all([
-          api.getAppVersion(),
-          api.getBuildId ? api.getBuildId() : Promise.resolve('')
-        ]).then(function (results) {
-          var v = results[0]; var bid = results[1];
+        api.getAppVersion().then(function (v) {
           var el = document.getElementById('about-version');
-          if (el) el.textContent = (v ? 'Version ' + v : '') + (bid ? '\nBuild: ' + bid : '');
+          if (el) el.textContent = v ? 'Version ' + v : '';
           modal.classList.add('open');
         });
       });
