@@ -1,6 +1,7 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard } from 'electron';
+import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard, dialog } from 'electron';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { autoUpdater } from 'electron-updater';
 import { pathToFileURL } from 'node:url';
 import * as processAudio from './processAudioBridge.js';
 
@@ -745,6 +746,23 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(buildMenu());
   createMainWindow();
   registerPttGlobalShortcut();
+
+  // Auto-update (only works with NSIS installer, not portable exe)
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('update-downloaded', (info) => {
+    dialog.showMessageBox(mainWindow!, {
+      type: 'info',
+      title: 'Update Ready',
+      message: `Version ${info.version} has been downloaded. It will be installed when you quit the app.`,
+      buttons: ['Restart Now', 'Later']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+  autoUpdater.checkForUpdates().catch(() => {});
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
