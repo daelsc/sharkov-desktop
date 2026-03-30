@@ -43,6 +43,31 @@ Clientside input settings gives you more control on which devices a server can s
 - `getClipboardText` and `downloadUrl` IPC handlers are missing from preload — paste and image download in iframe context menu are non-functional
 - AudioContext is leaked on each `getUserMedia` call with volume adjustment (browsers limit ~6-8)
 
+## Building & Releasing
+
+### Local Development
+```
+npm install                  # install dependencies
+npm run build                # compile TypeScript + minify wrapper
+npm run dev                  # build and launch the app
+npm run pack                 # build + package NSIS installer + portable exe into out/
+```
+
+### Publishing a Release
+Run `release.bat` from the project folder. It will:
+1. Prompt for a version number (e.g. `0.0.7`)
+2. Update `package.json` with the new version
+3. Build the NSIS installer (`out/Sharkord Setup X.X.X.exe`) and generate `out/latest.yml`
+4. Commit the version bump and push to GitHub
+5. Create a GitHub Release on `daelsc/sharkorddesktop` and upload the installer + `latest.yml`
+
+Requires `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify).
+
+### Auto-Update
+The app uses `electron-updater` to check for updates from GitHub Releases on launch. When a new version is found, it downloads in the background and prompts the user to restart. This only works with the **NSIS installer** version, not the portable exe.
+
+The `latest.yml` file in the release is what tells the updater a new version is available — always upload it alongside the installer.
+
 ## Privacy
 
 Sharkord Desktop does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.
