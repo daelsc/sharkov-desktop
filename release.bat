@@ -5,17 +5,15 @@ cd /d "%~dp0"
 set "NODE_DIR=%~dp0node"
 if exist "%NODE_DIR%\node.exe" set "PATH=%NODE_DIR%;%PATH%"
 
-:: Get current version from package.json
-for /f "tokens=*" %%i in ('node -e "console.log(require('./package.json').version)"') do set "CUR_VER=%%i"
-echo Current version: %CUR_VER%
+:: Read build counter and increment
+for /f "tokens=*" %%i in ('node -e "var fs=require('fs');var c=0;try{c=parseInt(fs.readFileSync('.buildcount','utf8').trim(),10)||0;}catch(e){}console.log(c+1);"') do set "BUILD=%%i"
 
-:: Prompt for new version
-set /p "NEW_VER=New version (or press Enter for %CUR_VER%): "
-if "%NEW_VER%"=="" set "NEW_VER=%CUR_VER%"
+:: Version is 0.1.{build}
+set "NEW_VER=0.1.%BUILD%"
+echo Building version: %NEW_VER%
 
 :: Update version in package.json
 node -e "var fs=require('fs');var p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='%NEW_VER%';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');"
-echo Version set to %NEW_VER%
 
 :: Build and package
 echo.

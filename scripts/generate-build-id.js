@@ -14,6 +14,6 @@ count++;
 
 fs.writeFileSync(counterPath, String(count));
 
-const buildId = String(count).padStart(3, '0');
+const buildId = String(count);
 fs.writeFileSync(outPath, JSON.stringify({ buildId }));
 console.log('generate-build-id:', buildId);
