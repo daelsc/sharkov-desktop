@@ -56,7 +56,7 @@ git push origin main
 
 :: Create release via WSL gh
 echo Creating GitHub release...
-wsl -- gh release create "v%NEW_VER%" --repo daelsc/sharkov --title "v%NEW_VER%" --generate-notes
+wsl -- gh release create "v%NEW_VER%" --repo daelsc/sharkov-desktop --title "v%NEW_VER%" --generate-notes
 if errorlevel 1 (
     echo ERROR: Failed to create release. Check gh auth.
     goto err
@@ -64,13 +64,13 @@ if errorlevel 1 (
 
 :: Upload assets
 echo Uploading installer...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov "./out/Sharkov Setup %NEW_VER%.exe"
+wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/Sharkov Setup %NEW_VER%.exe"
 echo Uploading latest.yml...
-wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov "./out/latest.yml"
+wsl -- gh release upload "v%NEW_VER%" --repo daelsc/sharkov-desktop "./out/latest.yml"
 
 echo.
 echo Release v%NEW_VER% published!
-echo https://github.com/daelsc/sharkov/releases/tag/v%NEW_VER%
+echo https://github.com/daelsc/sharkov-desktop/releases/tag/v%NEW_VER%
 goto end
 
 :err

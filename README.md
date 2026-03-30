@@ -57,7 +57,7 @@ Run `release.bat` from the project folder. It will:
 2. Update `package.json` with the new version
 3. Build the NSIS installer (`out/Sharkov Setup X.X.X.exe`) and generate `out/latest.yml`
 4. Commit the version bump and push to GitHub
-5. Create a GitHub Release on `daelsc/sharkov` and upload the installer + `latest.yml`
+5. Create a GitHub Release on `daelsc/sharkov-desktop` and upload the installer + `latest.yml`
 
 Requires `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify).
 
