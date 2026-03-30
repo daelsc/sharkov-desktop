@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard, dialog } from 'electron';
 import path from 'node:path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync } from 'node:fs';
 import { autoUpdater } from 'electron-updater';
 import { pathToFileURL } from 'node:url';
 import * as processAudio from './processAudioBridge.js';
@@ -750,7 +750,26 @@ app.whenReady().then(async () => {
   // Auto-update (only works with NSIS installer, not portable exe)
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = {
+    info: (msg: unknown) => appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[INFO] ${msg}\n`),
+    warn: (msg: unknown) => appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[WARN] ${msg}\n`),
+    error: (msg: unknown) => appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[ERROR] ${msg}\n`),
+    debug: (msg: unknown) => appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[DEBUG] ${msg}\n`),
+  } as unknown as typeof autoUpdater.logger;
+  autoUpdater.on('checking-for-update', () => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), '[EVENT] checking-for-update\n');
+  });
+  autoUpdater.on('update-available', (info) => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[EVENT] update-available: ${JSON.stringify(info)}\n`);
+  });
+  autoUpdater.on('update-not-available', (info) => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[EVENT] update-not-available: ${JSON.stringify(info)}\n`);
+  });
+  autoUpdater.on('error', (err) => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[EVENT] error: ${err}\n`);
+  });
   autoUpdater.on('update-downloaded', (info) => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[EVENT] update-downloaded: ${JSON.stringify(info)}\n`);
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: 'Update Ready',
@@ -762,7 +781,9 @@ app.whenReady().then(async () => {
       }
     });
   });
-  autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.checkForUpdates().catch((err) => {
+    appendFileSync(path.join(app.getPath('userData'), 'updater.log'), `[CATCH] checkForUpdates failed: ${err}\n`);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
