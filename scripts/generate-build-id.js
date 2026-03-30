@@ -1,17 +1,19 @@
 'use strict';
-const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-let gitHash = 'unknown';
+const counterPath = path.join(__dirname, '..', '.buildcount');
+const outPath = path.join(__dirname, '..', 'static', 'buildId.json');
+
+let count = 0;
 try {
-  gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  count = parseInt(fs.readFileSync(counterPath, 'utf8').trim(), 10) || 0;
 } catch (_) {}
 
-const now = new Date();
-const date = (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
-const time = now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
-const buildId = `${gitHash}.${date}.${time}`;
-const outPath = path.join(__dirname, '..', 'static', 'buildId.json');
+count++;
+
+fs.writeFileSync(counterPath, String(count));
+
+const buildId = String(count).padStart(3, '0');
 fs.writeFileSync(outPath, JSON.stringify({ buildId }));
 console.log('generate-build-id:', buildId);
