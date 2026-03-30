@@ -38,6 +38,20 @@ Clientside input settings gives you more control on which devices a server can s
 - Code signature verification is disabled since builds are not code-signed
 - Only works with the **NSIS installer** version, not the portable exe
 
+### Planned: Unified Settings
+Goal: Replace the two separate settings UIs (Electron gear + web app gear) with a single Electron-native settings panel.
+
+The web app settings (`apps/client/src/components/server-screens/user-settings/`) has 5 tabs:
+- **Profile** — username, bio, banner color, avatar, banner image. Uses `trpc.users.update.mutate()` — needs server API auth
+- **Devices** — audio/video selection. Already replicated in Electron device settings modal
+- **Password** — change password. Uses `trpc.users.updatePassword.mutate()` — needs server API auth
+- **Notifications** — browser notification toggles (all messages, mentions, DMs). Client-side localStorage, easy to replicate
+- **Others** — auto-join last channel, language switcher. Client-side localStorage, easy to replicate
+
+Approach: Replicate Notifications and Others first (no API needed), then Profile and Password (requires tRPC client setup with auth). Once all tabs are replicated, hide the web app's settings gear via CSS injection.
+
+Server source: `~/git/sharkord` (WSL) / [daelsc/sharkord](https://github.com/daelsc/sharkord)
+
 ### Known Issues / TODO
 - `minBitrate` is not in the WebRTC spec — Chromium silently ignores it. The stable bitrate comes from H264/NVENC, `degradationPreference`, and SDP `b=AS:`
 - Process audio resampler has a boundary interpolation bug at packet edges when upsampling — may cause minor audio glitches
