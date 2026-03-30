@@ -1,6 +1,6 @@
 # Sharkov
 
-Sharkov is a fork of [Sharkord Desktop](https://github.com/Bugel/sharkorddesktop) — an Electron desktop app for [Sharkord](https://github.com/sharkord/sharkord), a self-hosted voice, video, and text chat platform by [Diogo Martino](https://github.com/sharkord/sharkord).
+Sharkov is a desktop app by [daelsc](https://github.com/daelsc), forked from [Sharkord Desktop](https://github.com/Bugel/sharkorddesktop) — an Electron client for [Sharkord](https://github.com/sharkord/sharkord), a self-hosted voice, video, and text chat platform by [Diogo Martino](https://github.com/sharkord/sharkord).
 
 All of your Sharkord servers in one app. With multiserver support and the keep connected toggle, chatting between multiple servers is easy!
 <img width="1920" height="1018" alt="{FA9B7FAB-FFFF-4CC7-B68F-0FB58534E67D}" src="https://github.com/user-attachments/assets/03bcc7c1-9059-4ad6-a114-1b89024e5114" />
