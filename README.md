@@ -46,6 +46,9 @@ Clientside input settings gives you more control on which devices a server can s
 
 ## Building & Releasing
 
+### Versioning
+Version format is `0.1.{build}` where `{build}` auto-increments from `.buildcount` file (local, not committed). The `.buildcount` file persists between builds. `release.bat` handles incrementing automatically.
+
 ### Prerequisites
 - Node.js 20+
 - `gh` CLI authenticated in WSL (`wsl -- gh auth status` to verify)
@@ -82,12 +85,20 @@ Run `release.bat` from the project folder. It will:
 
 **Updater log:** `%APPDATA%\sharkov-desktop\updater.log` — check this if updates aren't working
 
+### Other Scripts
+- `run.bat` / `run.ps1` — build and launch the app locally (dev mode)
+- `pack.bat` — build + package both NSIS installer and portable exe into `out/`
+- `release.bat` — full release workflow (build, package, publish to GitHub)
+
 ### Architecture Notes
 - The app wraps Sharkord web app in an Electron iframe and injects JavaScript to control WebRTC, device selection, PTT, and screen sharing
 - Internal message types (`sharkord-ptt`, `sharkord-set-video-bitrate`, etc.) use the original `sharkord` prefix for compatibility with the server iframe protocol
 - User-visible strings use `Sharkov`
 - Uses a [custom NVENC-patched Electron](https://github.com/steveseguin/electroncapture) build for hardware H264 encoding in WebRTC
 - Native C++ addon (`native/`) provides per-process audio capture via Windows `AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` API
+- There are **two separate settings UIs**: the Electron client's device settings modal (audio/video/PTT) and the Sharkord web app's settings (profile, etc.) inside the iframe. These are independent — merging them would require server-side changes
+- Local project folder is `C:\Users\dave\git\sharkorddesktop` (not renamed from the original)
+- Git config for this repo: `user.name = "dave"`, `user.email = "daelsc@users.noreply.github.com"` (set locally, not global)
 
 ## Privacy
 
