@@ -753,6 +753,8 @@ app.whenReady().then(async () => {
     owner: 'daelsc',
     repo: 'sharkov-desktop'
   });
+  autoUpdater.allowDowngrade = false;
+  (autoUpdater as unknown as { verifyUpdateCodeSignature: unknown }).verifyUpdateCodeSignature = () => Promise.resolve(null);
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = {
