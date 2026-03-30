@@ -84,20 +84,40 @@ Run `release.bat` from the project folder. It will:
 4. If publish succeeds: commit version bump and push to git
 5. If publish fails: revert version and exit
 
-**Never manually create releases or upload files.** `release.bat` is the only way to publish. electron-builder handles filenames, blockmaps, and `latest.yml` correctly.
+### CRITICAL RULES — Do Not Break These
+These rules exist because we broke the release pipeline multiple times learning them:
+
+1. **`release.bat` is the ONLY way to publish.** Never manually `gh release create`, never manually upload assets. electron-builder's `--publish always` handles everything atomically — installer, blockmap, `latest.yml`, correct filenames.
+
+2. **Never build an installer without bumping the version.** NSIS won't overwrite an installed version with the same version number. The installer silently does nothing. Always increment the patch version before building.
+
+3. **Git commit happens AFTER successful publish, not before.** This prevents "version bumped in git but no release on GitHub" partial failure states. `release.bat` reverts the version on failure.
+
+4. **The `GH_TOKEN` must be a classic token with `repo` scope.** Fine-grained tokens get 403 errors on release creation. Classic tokens start with `ghp_`. Set via `setx GH_TOKEN "ghp_..."`.
+
+5. **Every release must include the `.blockmap` file.** Without it, the updater can't do differential downloads and falls back to full 111MB downloads that may hang. electron-builder uploads this automatically — which is why rule #1 exists.
+
+6. **The `releaseType: release` setting in package.json is required.** Without it, electron-builder creates draft releases that the updater can't see. This is configured in `package.json` under `build.publish`.
+
+7. **Don't use `pack.bat` or `npm run pack` for releases.** Those are for local dev testing only. They don't publish, don't bump versions, and don't upload anything.
+
+8. **The updater only works with the NSIS installer**, not the portable exe. Users running the portable version get no auto-updates.
 
 ### How Auto-Update Works
-1. App launches → `NsisUpdater` checks `latest.yml` from the latest GitHub Release
-2. If a newer version exists, it downloads the installer in the background
-3. User gets a dialog: "Restart Now" or "Later"
-4. On restart (or next quit), the NSIS installer runs silently and relaunches the app
+1. App launches → `NsisUpdater` checks GitHub Releases API for the latest non-draft release
+2. Reads `latest.yml` from that release to get the version and download URL
+3. If newer version exists, downloads the installer (differential via blockmap if available, full download otherwise)
+4. User gets a dialog: "Restart Now" or "Later"
+5. On restart, the NSIS installer runs silently with `--updated --force-run`
 
 **Updater log:** `%APPDATA%\sharkov-desktop\updater.log` — check this if updates aren't working
 
+**Cache dir:** `%LOCALAPPDATA%\sharkov-desktop-updater\pending\` — downloaded installers land here
+
 ### Scripts
 - `run.bat` / `run.ps1` — build and launch the app locally (dev mode)
-- `pack.bat` — build + package locally (no publish, for testing)
-- `release.bat` — **the only way to publish** (build, publish to GitHub, commit)
+- `pack.bat` — build + package locally (no publish, for testing only)
+- `release.bat` — **the only way to publish** (bump version, build, publish to GitHub, commit)
 
 ### Architecture Notes
 - The app wraps Sharkord web app in an Electron iframe and injects JavaScript to control WebRTC, device selection, PTT, and screen sharing
