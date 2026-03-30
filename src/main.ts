@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard, dialog } from 'electron';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync } from 'node:fs';
-import { autoUpdater } from 'electron-updater';
+import { NsisUpdater } from 'electron-updater';
 import { pathToFileURL } from 'node:url';
 import * as processAudio from './processAudioBridge.js';
 
@@ -748,6 +748,11 @@ app.whenReady().then(async () => {
   registerPttGlobalShortcut();
 
   // Auto-update (only works with NSIS installer, not portable exe)
+  const autoUpdater = new NsisUpdater({
+    provider: 'github',
+    owner: 'daelsc',
+    repo: 'sharkov-desktop'
+  });
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = {
