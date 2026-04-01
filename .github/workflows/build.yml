@@ -81,6 +81,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Repackage NSIS installer
+        run: npx electron-builder --win nsis --x64 --prepackaged out/win-unpacked
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Zip portable directory
         run: Compress-Archive -Path out\win-unpacked\* -DestinationPath "out\Sharkov.${{ steps.version.outputs.version }}.zip"
 
