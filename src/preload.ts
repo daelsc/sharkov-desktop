@@ -3,7 +3,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('sharkordDesktop', {
   getServerUrl: () => ipcRenderer.invoke('get-server-url'),
   setServerUrl: (url: string) => ipcRenderer.invoke('set-server-url', url),
-  closePreferences: () => ipcRenderer.invoke('close-preferences'),
   onOpenAddServerModal: (callback: () => void) => {
     ipcRenderer.on('open-add-server-modal', () => callback());
   },

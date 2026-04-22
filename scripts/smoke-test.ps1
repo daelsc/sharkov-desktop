@@ -23,11 +23,12 @@ for ($i = 1; $i -le $WaitSeconds; $i++) {
 }
 
 Write-Host "PASS: app still running after $WaitSeconds seconds"
-try {
-    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    $proc.WaitForExit(5000) | Out-Null
-} catch {
-    Write-Host "Warning: failed to stop process cleanly: $_"
-}
+# Kill the whole process tree — Electron spawns gpu-process / renderer /
+# utility / crashpad children that would otherwise keep file handles on
+# out\win-unpacked\* and break the next repackage step.
+& taskkill.exe /T /F /PID $proc.Id 2>&1 | Out-Host
+$proc.WaitForExit(5000) | Out-Null
+# Brief pause to let Windows release file handles before downstream steps.
+Start-Sleep -Seconds 2
 
 exit 0
