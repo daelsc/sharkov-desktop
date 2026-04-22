@@ -44,6 +44,12 @@ jobs:
         env:
           CUSTOM_ELECTRON_SKIP: '1'
 
+      - name: Check types
+        run: npm run check-types
+
+      - name: Lint
+        run: npm run lint
+
       - name: Install custom Electron (NVENC patched)
         run: node scripts/install-custom-electron.js
 
@@ -75,6 +81,10 @@ jobs:
           if (Test-Path "$src\locales") { Get-ChildItem "$src\locales\*" | Copy-Item -Destination "$dst\locales" -Force }
           if (Test-Path "$src\resources\electron.asar") { Copy-Item "$src\resources\electron.asar" "$dst\resources\electron.asar" -Force }
           Write-Host "Replaced Electron with NVENC patched build"
+
+      - name: Smoke test packaged app
+        shell: pwsh
+        run: .\scripts\smoke-test.ps1 -ExePath out\win-unpacked\Sharkov.exe
 
       - name: Repackage portable exe
         run: npx electron-builder --win portable --x64 --prepackaged out/win-unpacked

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, globalShortcut, clipboard, dialog } from 'electron';
+import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, clipboard, dialog } from 'electron';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync } from 'node:fs';
 import { NsisUpdater } from 'electron-updater';
@@ -83,8 +83,6 @@ function setSavedServers(servers: SavedServer[]): void {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let prefsWindow: BrowserWindow | null = null;
-let aboutWindow: BrowserWindow | null = null;
 
 const DEFAULT_SERVER_URL = 'https://demo.sharkord.com';
 
@@ -577,66 +575,6 @@ function setupMediaPermissions(): void {
   });
 }
 
-function createPreferencesWindow(): void {
-  if (prefsWindow) {
-    prefsWindow.focus();
-    return;
-  }
-
-  prefsWindow = new BrowserWindow({
-    width: 440,
-    height: 200,
-    resizable: false,
-    title: 'Server URL',
-    parent: mainWindow ?? undefined,
-    modal: mainWindow !== null,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  });
-
-  prefsWindow.loadFile(path.join(__dirname, '..', 'static', 'preferences.html'));
-  prefsWindow.on('closed', () => { prefsWindow = null; });
-}
-
-function createAboutWindow(): void {
-  if (aboutWindow) {
-    aboutWindow.focus();
-    return;
-  }
-
-  aboutWindow = new BrowserWindow({
-    width: 380,
-    height: 240,
-    resizable: false,
-    title: 'About Sharkov Desktop',
-    parent: mainWindow ?? undefined,
-    modal: mainWindow !== null,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  });
-
-  aboutWindow.setMenu(null);
-  aboutWindow.loadFile(path.join(__dirname, '..', 'static', 'about.html'));
-  aboutWindow.webContents.once('did-finish-load', () => {
-    const el = aboutWindow?.webContents;
-    if (el && !el.isDestroyed()) {
-      el.executeJavaScript(
-        `(function(){var e=document.getElementById("about-version");if(e)e.textContent="Version ${app.getVersion()}";})();`
-      ).catch(() => {});
-    }
-  });
-  aboutWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
-  aboutWindow.on('closed', () => { aboutWindow = null; });
-}
-
 function clearAllSavedServers(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send('open-clear-servers-modal');
@@ -733,7 +671,6 @@ app.commandLine.appendSwitch('force-fieldtrials',
 );
 
 app.whenReady().then(async () => {
-  const { default: Store } = await import('electron-store');
   const StoreImpl = (await import('electron-store')).default;
   store = new StoreImpl<{ serverUrl: string; savedServers: string }>({
     defaults: { serverUrl: 'https://demo.sharkord.com', savedServers: '[]' }
@@ -816,7 +753,6 @@ ipcMain.handle('set-server-url', (_event, url: string) => {
       ? normalized
       : `https://${normalized}`;
   store.set('serverUrl', withProtocol || DEFAULT_SERVER_URL);
-  prefsWindow?.close();
   const finalUrl = getServerUrl();
   if (mainWindow && mainWindow.webContents.getURL().startsWith('file:')) {
     mainWindow.webContents.send('wrapper-navigate', finalUrl);
@@ -824,7 +760,6 @@ ipcMain.handle('set-server-url', (_event, url: string) => {
     mainWindow?.loadURL(finalUrl);
   }
 });
-ipcMain.handle('close-preferences', () => prefsWindow?.close());
 ipcMain.handle('get-app-version', () => app.getVersion());
 ipcMain.handle('get-build-id', () => getBuildId());
 ipcMain.handle('get-video-bitrate', () => getDevicePreferences().videoBitrate || 0);
