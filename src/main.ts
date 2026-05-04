@@ -205,8 +205,9 @@ function getDevicePrefsInjectionCode(): string {
     'if(!c.video)c.video={};',
     'if(c.video===true)c.video={};',
     'c.video.width={ideal:1920};c.video.height={ideal:1080};c.video.frameRate={ideal:60};',
-    'return origGDM(c).then(function(stream){',
     'var ppid=window.__sharkordProcessAudioPid;',
+    'if(ppid&&ppid>0)c.audio=false;',
+    'return origGDM(c).then(function(stream){',
     'if(!ppid||ppid<=0)return stream;',
     'window.parent.postMessage({type:"sharkord-start-process-audio",pid:ppid},"*");',
     'var workletSrc="class F extends AudioWorkletProcessor{constructor(){super();this.q=[];this.r=0;this.port.onmessage=function(e){if(e.data&&e.data.type===\\"pcm\\")this.q.push(new Float32Array(e.data.buffer));}.bind(this);}process(i,o){var ch=o[0];if(!ch||ch.length===0)return true;var fs=ch[0].length;var nc=ch.length;var w=0;while(w<fs&&this.q.length>0){var b=this.q[0];var ts=b.length/nc;var av=ts-this.r;var tk=Math.min(av,fs-w);for(var c=0;c<nc;c++){for(var s=0;s<tk;s++){ch[c][w+s]=b[(this.r+s)*nc+c];}}w+=tk;this.r+=tk;if(this.r>=ts){this.q.shift();this.r=0;}}for(var c=0;c<nc;c++){for(var s=w;s<fs;s++){ch[c][s]=0;}}return true;}}registerProcessor(\\"process-audio-feeder\\",F);";',
@@ -217,6 +218,7 @@ function getDevicePrefsInjectionCode(): string {
     'var dest=actx.createMediaStreamDestination();node.connect(dest);',
     'function onPcm(e){if(e.data&&e.data.type==="sharkord-process-audio-chunk"&&e.data.buffer){node.port.postMessage({type:"pcm",buffer:e.data.buffer});}}',
     'window.addEventListener("message",onPcm);',
+    'stream.getAudioTracks().forEach(function(t){stream.removeTrack(t);t.stop();});',
     'dest.stream.getAudioTracks().forEach(function(t){stream.addTrack(t);});',
     'var vt=stream.getVideoTracks();if(vt.length>0){vt[0].addEventListener("ended",function(){window.removeEventListener("message",onPcm);window.parent.postMessage({type:"sharkord-stop-process-audio"},"*");node.disconnect();actx.close();});}',
     'return stream;}).catch(function(err){console.error("[Sharkov] AudioWorklet setup failed:",err);return stream;});});}}}',
@@ -253,6 +255,7 @@ function getMuteStreamsInjectionCode(): string {
     '      origSet.call(this,v);',
     '      if(v instanceof MediaStream&&this.tagName==="VIDEO"&&v.getVideoTracks().length>0){',
     '        this.muted=true;this.volume=0;',
+    '        var el=this;if(el.paused)el.play().catch(function(){});',
     '      }',
     '    },',
     '    configurable:true,enumerable:true',
@@ -533,7 +536,20 @@ function setupMediaPermissions(): void {
         const chosen = sources.find(s => s.id === selectedId);
         if (!chosen) { try { callback({}); } catch {} return; }
 
-        if (audioPid && audioPid > 0 && processAudio.isAvailable()) {
+        if (audioPid === -1) {
+          // No audio mode — clear PID flag and return video-only stream
+          const clearCode = 'window.__sharkordProcessAudioPid=0;';
+          const wc = mainWindow?.webContents;
+          if (wc && !mainWindow!.isDestroyed()) {
+            const mainFrame = wc.mainFrame as {
+              framesInSubtree?: { url: string; executeJavaScript: (c: string) => Promise<unknown> }[];
+              frames?: { url: string; executeJavaScript: (c: string) => Promise<unknown> }[];
+            };
+            const frames = mainFrame.framesInSubtree ?? mainFrame.frames ?? [];
+            frames.filter(f => f.url && !f.url.startsWith('file:')).forEach(f => f.executeJavaScript(clearCode).catch(() => {}));
+          }
+          callback({ video: chosen });
+        } else if (audioPid && audioPid > 0 && processAudio.isAvailable()) {
           // Inject PID into frames, then resolve with video-only (audio via native capture)
           const pidCode = 'window.__sharkordProcessAudioPid=' + audioPid + ';';
           const wc = mainWindow?.webContents;

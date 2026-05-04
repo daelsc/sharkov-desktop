@@ -232,7 +232,7 @@ private:
         REFERENCE_TIME hnsBufferDuration = 200000; // 20ms in 100ns units
         hr = m_audioClient->Initialize(
             AUDCLNT_SHAREMODE_SHARED,
-            AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
+            AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
             AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
             hnsBufferDuration,
             0,
