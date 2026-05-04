@@ -92,6 +92,19 @@
         width: 16px;
         height: 16px;
       }
+      .no-audio-option {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #a1a1aa;
+      }
+      .no-audio-option input[type="checkbox"] {
+        accent-color: #3b82f6;
+        width: 16px;
+        height: 16px;
+      }
       .modal-actions {
         display: flex;
         justify-content: flex-end;
@@ -119,6 +132,10 @@
         <input type="checkbox" id="audio-checkbox" checked />
         <span id="audio-label">Only capture audio from this app</span>
       </label>
+      <label class="no-audio-option" id="no-audio-option">
+        <input type="checkbox" id="no-audio-checkbox" />
+        <span>No audio (video only)</span>
+      </label>
       <div class="modal-actions">
         <button type="button" class="cancel" id="cancel">Cancel</button>
         <button type="button" class="share" id="share" disabled>Share</button>
@@ -133,6 +150,17 @@
       const audioOption = document.getElementById('audio-option');
       const audioCheckbox = document.getElementById('audio-checkbox');
       const audioLabel = document.getElementById('audio-label');
+      const noAudioOption = document.getElementById('no-audio-option');
+      const noAudioCheckbox = document.getElementById('no-audio-checkbox');
+
+      noAudioCheckbox.addEventListener('change', () => {
+        if (noAudioCheckbox.checked) {
+          audioOption.classList.remove('visible');
+        } else {
+          const pid = selectedSource ? parseInt(selectedSource.dataset.pid, 10) : 0;
+          if (pid > 0) audioOption.classList.add('visible');
+        }
+      });
 
       let selectedSource = null;
 
@@ -184,7 +212,7 @@
         shareBtn.disabled = false;
 
         const pid = parseInt(item.dataset.pid, 10);
-        if (pid > 0) {
+        if (pid > 0 && !noAudioCheckbox.checked) {
           audioLabel.textContent = 'Only capture audio from ' + item.dataset.name;
           audioCheckbox.checked = true;
           audioOption.classList.add('visible');
@@ -196,7 +224,12 @@
       shareBtn.addEventListener('click', () => {
         if (!selectedSource) return;
         const pid = parseInt(selectedSource.dataset.pid, 10);
-        const audioPid = (pid > 0 && audioCheckbox.checked) ? pid : 0;
+        let audioPid;
+        if (noAudioCheckbox.checked) {
+          audioPid = -1;
+        } else {
+          audioPid = (pid > 0 && audioCheckbox.checked) ? pid : 0;
+        }
         ipcRenderer.send('screen-picker-selected', selectedSource.dataset.id, audioPid);
       });
 

@@ -257,6 +257,7 @@ function getMuteStreamsInjectionCode(): string {
     '      origSet.call(this,v);',
     '      if(v instanceof MediaStream&&this.tagName==="VIDEO"&&v.getVideoTracks().length>0){',
     '        this.muted=true;this.volume=0;',
+    '        var el=this;if(el.paused)el.play().catch(function(){});',
     '      }',
     '    },',
     '    configurable:true,enumerable:true',
@@ -537,7 +538,20 @@ function setupMediaPermissions(): void {
         const chosen = sources.find(s => s.id === selectedId);
         if (!chosen) { try { callback({}); } catch {} return; }
 
-        if (audioPid && audioPid > 0 && processAudio.isAvailable()) {
+        if (audioPid === -1) {
+          // No audio mode — clear PID flag and return video-only stream
+          const clearCode = 'window.__sharkordProcessAudioPid=0;';
+          const wc = mainWindow?.webContents;
+          if (wc && !mainWindow!.isDestroyed()) {
+            const mainFrame = wc.mainFrame as {
+              framesInSubtree?: { url: string; executeJavaScript: (c: string) => Promise<unknown> }[];
+              frames?: { url: string; executeJavaScript: (c: string) => Promise<unknown> }[];
+            };
+            const frames = mainFrame.framesInSubtree ?? mainFrame.frames ?? [];
+            frames.filter(f => f.url && !f.url.startsWith('file:')).forEach(f => f.executeJavaScript(clearCode).catch(() => {}));
+          }
+          callback({ video: chosen });
+        } else if (audioPid && audioPid > 0 && processAudio.isAvailable()) {
           // Inject PID into frames, then resolve with video-only (audio via native capture)
           const pidCode = 'window.__sharkordProcessAudioPid=' + audioPid + ';';
           const wc = mainWindow?.webContents;
