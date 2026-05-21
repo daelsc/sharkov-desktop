@@ -78,14 +78,15 @@
       }
       .audio-option {
         margin-top: 12px;
-        display: none;
+        display: flex;
         align-items: center;
         gap: 8px;
         font-size: 13px;
         color: #a1a1aa;
       }
-      .audio-option.visible {
-        display: flex;
+      .audio-option.disabled {
+        opacity: 0.35;
+        pointer-events: none;
       }
       .audio-option input[type="checkbox"] {
         accent-color: #3b82f6;
@@ -171,7 +172,9 @@
         grid.innerHTML = '';
         selectedSource = null;
         shareBtn.disabled = true;
-        audioOption.classList.remove('visible');
+        audioCheckbox.checked = false;
+        audioOption.classList.add('disabled');
+        audioLabel.textContent = 'Only capture audio from this app';
 
         sources.forEach((source) => {
           const item = document.createElement('div');
@@ -217,10 +220,11 @@
         const pid = parseInt(item.dataset.pid, 10);
         if (pid > 0) {
           audioLabel.textContent = 'Only capture audio from ' + item.dataset.name;
-          audioCheckbox.checked = false;
-          audioOption.classList.add('visible');
+          audioOption.classList.remove('disabled');
         } else {
-          audioOption.classList.remove('visible');
+          audioCheckbox.checked = false;
+          audioOption.classList.add('disabled');
+          audioLabel.textContent = 'Only capture audio from this app';
         }
       }
 
