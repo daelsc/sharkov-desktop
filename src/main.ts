@@ -807,11 +807,18 @@ ipcMain.handle('log-rtc-stats', (_event, report: unknown) => {
   getRtcLogStream().write(ts + ' ' + JSON.stringify(report) + '\n');
 });
 
-ipcMain.handle('confirm-clear-servers', () => {
+ipcMain.handle('confirm-clear-servers', async () => {
   if (!store) return;
+  const origins = getSavedServers()
+    .map(s => { try { return new URL(s.url).origin; } catch { return null; } })
+    .filter((o): o is string => !!o && o !== 'null');
   store.set(SAVED_SERVERS_KEY, '[]');
   store.set('serverUrl', DEFAULT_SERVER_URL);
-  session.defaultSession.clearStorageData({ storages: ['localstorage'] });
+  await Promise.all(
+    origins.map(origin =>
+      session.defaultSession.clearStorageData({ storages: ['localstorage'], origin })
+    )
+  );
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.reload();
   }
