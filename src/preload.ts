@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld('sharkordDesktop', {
     ipcRenderer.invoke('desktop-get-credentials-for-origin', origin),
   setCredentialsForOrigin: (origin: string, identity: string, password: string) =>
     ipcRenderer.invoke('desktop-set-credentials', origin, identity, password),
+  clearCredentialsForOrigin: (origin: string) =>
+    ipcRenderer.invoke('desktop-clear-credentials', origin),
   navigateToServer: (url: string) => ipcRenderer.invoke('desktop-navigate-to-server', url),
   onOpenAdminTokenDialog: (callback: () => void) => {
     ipcRenderer.on('open-admin-token-dialog', () => callback());

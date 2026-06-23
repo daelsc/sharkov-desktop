@@ -76,6 +76,32 @@
         positionContextMenuInViewport(iframeMenu, x, y);
         showContextMenuBackdrop();
       }
+    } else if (e.data.type === 'sharkord-save-credentials' && typeof e.data.identity === 'string' && typeof e.data.password === 'string') {
+      // Only persist for origins we already have a saved server for.
+      api.getServers().then(function (list) {
+        var known = list.some(function (s) { return getOrigin(s.url) === e.origin; });
+        if (known && api.setCredentialsForOrigin) {
+          api.setCredentialsForOrigin(e.origin, e.data.identity, e.data.password);
+        }
+      });
+    } else if (e.data.type === 'sharkord-clear-credentials') {
+      if (api.clearCredentialsForOrigin) api.clearCredentialsForOrigin(e.origin);
+    } else if (e.data.type === 'sharkord-request-credentials') {
+      api.getServers().then(function (list) {
+        var known = list.some(function (s) { return getOrigin(s.url) === e.origin; });
+        if (!known) return;
+        if (api.getCredentialsForOrigin) {
+          api.getCredentialsForOrigin(e.origin).then(function (creds) {
+            try {
+              e.source.postMessage({
+                type: 'sharkord-credentials',
+                identity: (creds && creds.identity) || null,
+                password: (creds && creds.password) || null
+              }, e.origin);
+            } catch (err) {}
+          });
+        }
+      });
     }
   });
 
