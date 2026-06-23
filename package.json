@@ -13,6 +13,8 @@
     "start": "electron .",
     "lint": "eslint src",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "minify": "terser static/wrapper.js -c -m -o static/wrapper.min.js",
     "minify:watch": "node scripts/watch-minify.js",
     "pack": "npm run build && electron-builder --dir",
@@ -33,7 +35,8 @@
     "eslint": "^9.18.0",
     "terser": "^5.36.0",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.21.0"
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^2.1.9"
   },
   "build": {
     "appId": "com.sharkov.desktop",
