@@ -289,6 +289,7 @@ function getCredentialCaptureInjectionCode(): string {
     'if(body.autoLogin){window.parent.postMessage({type:"sharkord-save-credentials",identity:body.identity,password:body.password},"*");}',
     'else{window.parent.postMessage({type:"sharkord-clear-credentials"},"*");}',
     '}catch(e){}',
+    '}',
     'return resp;',
     '});',
     '};',
