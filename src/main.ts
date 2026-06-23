@@ -273,6 +273,29 @@ function getMuteStreamsInjectionCode(): string {
   ].join('');
 }
 
+function getCredentialCaptureInjectionCode(): string {
+  return [
+    '(function(){if(window.__sharkordCredCaptureHooked)return;window.__sharkordCredCaptureHooked=true;',
+    'var origFetch=window.fetch&&window.fetch.bind(window);if(!origFetch)return;',
+    'window.fetch=function(input,init){',
+    'var reqUrl=typeof input==="string"?input:(input&&input.url)||"";',
+    'var u;try{u=new URL(reqUrl,location.origin);}catch(e){return origFetch.apply(this,arguments);}',
+    'var method=((init&&init.method)||"GET").toUpperCase();',
+    'if(method!=="POST"||!/\\/login$/.test(u.pathname))return origFetch.apply(this,arguments);',
+    'var body=null;try{body=init&&init.body?JSON.parse(init.body):null;}catch(e){body=null;}',
+    'return origFetch.apply(this,arguments).then(function(resp){',
+    'if(resp&&resp.ok&&body&&body.identity&&body.password){',
+    'try{',
+    'if(body.autoLogin){window.parent.postMessage({type:"sharkord-save-credentials",identity:body.identity,password:body.password},"*");}',
+    'else{window.parent.postMessage({type:"sharkord-clear-credentials"},"*");}',
+    '}catch(e){}',
+    'return resp;',
+    '});',
+    '};',
+    '})();'
+  ].join('');
+}
+
 function getWebrtcStatsInjectionCode(): string {
   const prefs = getDevicePreferences();
   const FORCED_BPS = (prefs.videoBitrate || 5000) * 1000; // kbps -> bps, default 5 Mbps
@@ -409,6 +432,7 @@ function injectDevicePrefsIntoFrame(frame: { url: string; executeJavaScript: (co
     frame.executeJavaScript(getClipboardCopyInjectionCode()).catch(() => {});
     frame.executeJavaScript(getMuteStreamsInjectionCode()).catch(() => {});
     frame.executeJavaScript(getWebrtcStatsInjectionCode()).catch(() => {});
+    frame.executeJavaScript(getCredentialCaptureInjectionCode()).catch(() => {});
   } catch {
     /* ignore */
   }
