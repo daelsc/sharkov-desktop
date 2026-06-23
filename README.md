@@ -32,6 +32,11 @@ Clientside input settings gives you more control on which devices a server can s
 - **Background poller VK mappings** — added Windows virtual key codes for `[ ] \ ; ' , . / ` - =` so PTT works when app is unfocused
 - **Friendly display names** — shows `[` instead of `BracketLeft`, `Left Shift` instead of `ShiftLeft`, etc.
 
+### Persistent Login
+- **Encrypted credential storage** — when you log in with "Login automatically" checked, Sharkov saves your identity and password for that server, encrypted at rest with the OS keyring (`safeStorage` / DPAPI on Windows). Plaintext is never written to disk; if OS encryption is unavailable, credentials are not stored.
+- **Auto re-login on session expiry** — when a server's session token expires and the connect screen reappears, Sharkov refills your credentials, re-ticks "Login automatically", and clicks Connect for you. The app's own `/login` runs, refreshing the token. No clicks required.
+- **Auto-cleanup** — unchecking "Login automatically" and connecting clears the stored credentials. Removing a server from the sidebar clears its credentials too.
+
 ### Auto-Update
 - **electron-updater** checks GitHub Releases on launch, downloads in background, prompts user to restart
 - Uses `NsisUpdater` directly (not the default `autoUpdater`) to avoid redirect issues with the custom NVENC-patched Electron build
@@ -132,3 +137,5 @@ These rules exist because we broke the release pipeline multiple times learning 
 ## Privacy
 
 Sharkov does not collect, transmit, or store any user data. All communication is between the client and the Sharkord server(s) you connect to. No analytics, telemetry, or tracking is included.
+
+Saved login credentials are encrypted with the OS keyring (`safeStorage`) and never leave the machine. They are only ever sent back to the exact server origin they were captured from.
