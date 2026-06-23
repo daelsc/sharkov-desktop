@@ -296,6 +296,37 @@ function getCredentialCaptureInjectionCode(): string {
   ].join('');
 }
 
+function getAutoLoginInjectionCode(): string {
+  return [
+    '(function(){if(window.__sharkordAutoLoginHooked)return;window.__sharkordAutoLoginHooked=true;',
+    'var attempted=false;',
+    'function hasConnectScreen(){return !!document.querySelector("[data-testid=\\"connect-identity-input\\"]");}',
+    'function setNativeValue(el,value){',
+    'var proto=el.tagName==="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;',
+    'var desc=Object.getOwnPropertyDescriptor(proto,"value");',
+    'if(desc&&desc.set)desc.set.call(el,value);else el.value=value;',
+    'el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));',
+    '}',
+    'function tryAutoLogin(){if(attempted||!hasConnectScreen())return;attempted=true;window.parent.postMessage({type:"sharkord-request-credentials"},"*");}',
+    'setInterval(tryAutoLogin,500);',
+    'if(document.body){new MutationObserver(function(){tryAutoLogin();}).observe(document.body,{childList:true,subtree:true});}',
+    'else{document.addEventListener("DOMContentLoaded",function(){new MutationObserver(function(){tryAutoLogin();}).observe(document.body,{childList:true,subtree:true});});}',
+    'window.addEventListener("message",function(e){',
+    'if(!e.data||e.data.type!=="sharkord-credentials")return;',
+    'if(!e.data.identity||!e.data.password)return;',
+    'var idEl=document.querySelector("[data-testid=\\"connect-identity-input\\"]");',
+    'var pwEl=document.querySelector("[data-testid=\\"connect-password-input\\"]");',
+    'if(!idEl||!pwEl)return;',
+    'setNativeValue(idEl,e.data.identity);setNativeValue(pwEl,e.data.password);',
+    'var sw=document.querySelector("[data-testid=\\"connect-auto-login-switch\\"]");',
+    'if(sw){var isOn=!!sw.querySelector("[data-state=\\"checked\\"]");if(!isOn)sw.click();}',
+    'function clickConnect(){var btn=document.querySelector("[data-testid=\\"connect-button\\"]");if(btn&&!btn.disabled){btn.click();return true;}return false;}',
+    'if(!clickConnect()){setTimeout(function(){clickConnect();},100);}',
+    '});',
+    '})();'
+  ].join('');
+}
+
 function getWebrtcStatsInjectionCode(): string {
   const prefs = getDevicePreferences();
   const FORCED_BPS = (prefs.videoBitrate || 5000) * 1000; // kbps -> bps, default 5 Mbps
@@ -433,6 +464,7 @@ function injectDevicePrefsIntoFrame(frame: { url: string; executeJavaScript: (co
     frame.executeJavaScript(getMuteStreamsInjectionCode()).catch(() => {});
     frame.executeJavaScript(getWebrtcStatsInjectionCode()).catch(() => {});
     frame.executeJavaScript(getCredentialCaptureInjectionCode()).catch(() => {});
+    frame.executeJavaScript(getAutoLoginInjectionCode()).catch(() => {});
   } catch {
     /* ignore */
   }
