@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, clipboard, dialog } from 'electron';
+import { app, BrowserWindow, Menu, shell, ipcMain, session, desktopCapturer, nativeImage, webFrameMain, clipboard, dialog, safeStorage } from 'electron';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync } from 'node:fs';
 import { NsisUpdater } from 'electron-updater';
 import { pathToFileURL } from 'node:url';
 import * as processAudio from './processAudioBridge.js';
+import { saveCredentials, loadCredentials, clearCredentials, type CredentialCrypto } from './credentials.js';
 
 function getBuildId(): string {
   return app.getVersion();
@@ -34,6 +35,13 @@ type SavedServer = {
 };
 type StoreType = { get: (key: string, defaultValue?: string) => string; set: (key: string, value: string) => void };
 let store: StoreType | null = null;
+
+const credentialCrypto: CredentialCrypto | null = safeStorage.isEncryptionAvailable()
+  ? {
+      encrypt: (text) => safeStorage.encryptString(text).toString('base64'),
+      decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
+    }
+  : null;
 
 const SAVED_SERVERS_KEY = 'savedServers';
 const DEVICE_PREFS_KEY = 'devicePreferences';
@@ -889,7 +897,18 @@ ipcMain.handle('desktop-add-server', (_event, server: { url: string; name: strin
 });
 
 ipcMain.handle('desktop-remove-server', (_event, id: string) => {
-  setSavedServers(getSavedServers().filter((s) => s.id !== id));
+  const list = getSavedServers();
+  const removed = list.find((s) => s.id === id);
+  if (removed) {
+    try {
+      const origin = new URL(removed.url).origin;
+      setSavedServers(clearCredentials(list, origin).filter((s) => s.id !== id));
+    } catch {
+      setSavedServers(list.filter((s) => s.id !== id));
+    }
+  } else {
+    setSavedServers(list);
+  }
 });
 
 ipcMain.handle('desktop-update-server', (_event, id: string, updates: Partial<SavedServer>) => {
@@ -913,41 +932,18 @@ ipcMain.handle('desktop-reorder-servers', (_event, orderedIds: string[]) => {
 });
 
 ipcMain.handle('desktop-get-credentials-for-origin', (_event, origin: string) => {
-  const server = getSavedServers().find((s) => {
-    try {
-      return new URL(s.url).origin === origin;
-    } catch {
-      return false;
-    }
-  });
-  if (!server || !server.identity || !server.password) return null;
-  return { identity: server.identity, password: server.password };
+  if (!credentialCrypto) return null;
+  return loadCredentials(getSavedServers(), credentialCrypto, origin);
 });
 
 ipcMain.handle('desktop-set-credentials', (_event, origin: string, identity: string, password: string) => {
-  const list = getSavedServers();
-  const idx = list.findIndex((s) => {
-    try {
-      return new URL(s.url).origin === origin;
-    } catch {
-      return false;
-    }
-  });
-  if (idx === -1) {
-    const url = origin + '/';
-    const newServer: SavedServer = {
-      id: crypto.randomUUID(),
-      url,
-      name: new URL(url).hostname,
-      identity,
-      password
-    };
-    setSavedServers([...list, newServer]);
-  } else {
-    const next = [...list];
-    next[idx] = { ...next[idx], identity, password };
-    setSavedServers(next);
-  }
+  if (!store || !credentialCrypto) return; // refuse to store without OS-keyring encryption
+  setSavedServers(saveCredentials(getSavedServers(), credentialCrypto, origin, identity, password));
+});
+
+ipcMain.handle('desktop-clear-credentials', (_event, origin: string) => {
+  if (!store) return;
+  setSavedServers(clearCredentials(getSavedServers(), origin));
 });
 
 ipcMain.handle('desktop-navigate-to-server', (_event, url: string) => {

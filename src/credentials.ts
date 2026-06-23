@@ -33,13 +33,13 @@ export function findServerByOrigin(
   return servers.find((s) => originOf(s.url) === origin);
 }
 
-export function saveCredentials(
-  servers: SavedServerLike[],
+export function saveCredentials<T extends SavedServerLike>(
+  servers: T[],
   crypto: CredentialCrypto,
   origin: string,
   identity: string,
   password: string
-): SavedServerLike[] {
+): T[] {
   const idx = servers.findIndex((s) => originOf(s.url) === origin);
   if (idx === -1) return servers; // never auto-create a server entry
   const next = servers.slice();
@@ -47,7 +47,7 @@ export function saveCredentials(
     ...servers[idx],
     identity,
     password: crypto.encrypt(password)
-  };
+  } as T;
   return next;
 }
 
@@ -61,14 +61,13 @@ export function loadCredentials(
   return { identity: srv.identity, password: crypto.decrypt(srv.password) };
 }
 
-export function clearCredentials(
-  servers: SavedServerLike[],
+export function clearCredentials<T extends SavedServerLike>(
+  servers: T[],
   origin: string
-): SavedServerLike[] {
+): T[] {
   const idx = servers.findIndex((s) => originOf(s.url) === origin);
   if (idx === -1) return servers;
   const next = servers.slice();
-  const { identity: _i, password: _p, ...rest } = servers[idx];
-  next[idx] = rest;
+  next[idx] = { ...servers[idx], identity: undefined, password: undefined };
   return next;
 }
