@@ -1,0 +1,10 @@
+# Normalize line endings across platforms.
+# Git stores LF in the repository and converts to the platform's native
+# EOL on checkout, so diffs stay clean on Windows checkouts.
+
+* text=auto
+
+# Windows-only scripts: force CRLF so cmd.exe parses them correctly
+# regardless of which OS performs the checkout.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
