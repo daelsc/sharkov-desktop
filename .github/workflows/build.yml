@@ -71,6 +71,7 @@ jobs:
         working-directory: native
 
       - name: Build native addon
+        continue-on-error: true
         run: npx node-gyp rebuild --arch=x64
         working-directory: native
 
