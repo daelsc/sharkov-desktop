@@ -1005,8 +1005,17 @@ ipcMain.handle('desktop-get-credentials-for-origin', (_event, origin: string) =>
 });
 
 ipcMain.handle('desktop-set-credentials', (_event, origin: string, identity: string, password: string) => {
-  if (!store || !credentialCrypto) return; // refuse to store without OS-keyring encryption
-  setSavedServers(saveCredentials(getSavedServers(), credentialCrypto, origin, identity, password));
+  const dbg = (m: string) => appendFileSync(path.join(app.getPath('userData'), 'cred-debug.log'), `[${new Date().toISOString()}] ${m}\n`);
+  dbg(`IPC invoked origin=${origin} identity=${identity.slice(0,20)} hasStore=${!!store} hasCrypto=${!!credentialCrypto} cryptoAvail=${safeStorage.isEncryptionAvailable()}`);
+  if (!store || !credentialCrypto) { dbg('ABORT — store or crypto null'); return; } // refuse to store without OS-keyring encryption
+  const before = getSavedServers();
+  const result = saveCredentials(before, credentialCrypto, origin, identity, password);
+  const matchIdx = before.findIndex(s => { try { return new URL(s.url).origin === origin; } catch { return false; } });
+  dbg(`saveCredentials: serversBefore=${before.length} serversAfter=${result.length} matchIdx=${matchIdx} entryNow=${result[matchIdx] ? JSON.stringify({ identity: result[matchIdx].identity, hasPwd: !!result[matchIdx].password }) : 'no entry'}`);
+  setSavedServers(result);
+  const after = getSavedServers();
+  dbg(`after write/re-read: entry=${after[matchIdx] ? JSON.stringify({ identity: after[matchIdx].identity, hasPwd: !!after[matchIdx].password }) : 'no entry'}`);
+  dbg(`config path: ${app.getPath('userData')}`);
 });
 
 ipcMain.handle('desktop-clear-credentials', (_event, origin: string) => {
