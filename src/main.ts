@@ -276,20 +276,23 @@ function getMuteStreamsInjectionCode(): string {
 function getCredentialCaptureInjectionCode(): string {
   return [
     '(function(){if(window.__sharkordCredCaptureHooked)return;window.__sharkordCredCaptureHooked=true;',
-    'var origFetch=window.fetch&&window.fetch.bind(window);if(!origFetch)return;',
+    'console.log("[credcapture] hook installed");',
+    'var origFetch=window.fetch&&window.fetch.bind(window);if(!origFetch){console.log("[credcapture] no fetch, abort");return;}',
     'window.fetch=function(input,init){',
     'var reqUrl=typeof input==="string"?input:(input&&input.url)||"";',
     'var u;try{u=new URL(reqUrl,location.origin);}catch(e){return origFetch.apply(this,arguments);}',
     'var method=((init&&init.method)||"GET").toUpperCase();',
     'if(method!=="POST"||!/\\/login$/.test(u.pathname))return origFetch.apply(this,arguments);',
-    'var body=null;try{body=init&&init.body?JSON.parse(init.body):null;}catch(e){body=null;}',
+    'console.log("[credcapture] POST /login detected",{url:u.href,hasBody:!!(init&&init.body)});',
+    'var body=null;try{body=init&&init.body?JSON.parse(init.body):null;}catch(e){body=null;console.log("[credcapture] body parse failed",e.message);}',
     'return origFetch.apply(this,arguments).then(function(resp){',
+    'console.log("[credcapture] /login response",{ok:resp&&resp.ok,status:resp&&resp.status,hasIdentity:!!(body&&body.identity),hasPassword:!!(body&&body.password)});',
     'if(resp&&resp.ok&&body&&body.identity&&body.password){',
     'try{',
-    'if(body.autoLogin){window.parent.postMessage({type:"sharkord-save-credentials",identity:body.identity,password:body.password},"*");}',
-    'else{window.parent.postMessage({type:"sharkord-clear-credentials"},"*");}',
-    '}catch(e){}',
-    '}',
+    'window.parent.postMessage({type:"sharkord-save-credentials",identity:body.identity,password:body.password},"*");',
+    'console.log("[credcapture] postMessage sent to parent");',
+    '}catch(e){console.log("[credcapture] postMessage FAILED",e.message);}',
+    '}else{console.log("[credcapture] NOT saving — condition fail",{respOk:resp&&resp.ok,hasIdentity:!!(body&&body.identity),hasPassword:!!(body&&body.password)});}',
     'return resp;',
     '});',
     '};',
@@ -756,6 +759,14 @@ app.whenReady().then(async () => {
   store = new StoreImpl<{ serverUrl: string; savedServers: string }>({
     defaults: { serverUrl: 'https://demo.sharkord.com', savedServers: '[]' }
   }) as unknown as StoreType;
+
+  // Identify the desktop in the User-Agent so the server's existing login
+  // log (logins.userAgent column, surfaced in the admin user-info panel)
+  // records the running app version per user. The sharkord server already
+  // parses and persists req.headers['user-agent'] on every WS join.
+  // Prepend a prominent, stable token; keep the original UA tail so the
+  // server's UAParser can still extract os/device for the admin panel.
+  app.userAgentFallback = `Sharkov-Desktop/${app.getVersion()} ${app.userAgentFallback}`;
 
   setupMediaPermissions();
   Menu.setApplicationMenu(buildMenu());

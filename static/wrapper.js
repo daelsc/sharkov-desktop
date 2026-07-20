@@ -77,11 +77,16 @@
         showContextMenuBackdrop();
       }
     } else if (e.data.type === 'sharkord-save-credentials' && typeof e.data.identity === 'string' && typeof e.data.password === 'string') {
+      console.log('[wrapperc] sharkord-save-credentials received from', e.origin, 'identity:', e.data.identity.slice(0,20));
       // Only persist for origins we already have a saved server for.
       api.getServers().then(function (list) {
         var known = list.some(function (s) { return getOrigin(s.url) === e.origin; });
+        console.log('[wrapperc] origin known?', known, '| saved server urls:', list.map(function(s){return s.url;}));
         if (known && api.setCredentialsForOrigin) {
           api.setCredentialsForOrigin(e.origin, e.data.identity, e.data.password);
+          console.log('[wrapperc] setCredentialsForOrigin IPC called for', e.origin);
+        } else {
+          console.log('[wrapperc] NOT saving — known:', known, '| hasIPC:', !!api.setCredentialsForOrigin);
         }
       });
     } else if (e.data.type === 'sharkord-clear-credentials') {
