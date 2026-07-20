@@ -284,23 +284,19 @@ function getMuteStreamsInjectionCode(): string {
 function getCredentialCaptureInjectionCode(): string {
   return [
     '(function(){if(window.__sharkordCredCaptureHooked)return;window.__sharkordCredCaptureHooked=true;',
-    'console.log("[credcapture] hook installed");',
-    'var origFetch=window.fetch&&window.fetch.bind(window);if(!origFetch){console.log("[credcapture] no fetch, abort");return;}',
+    'var origFetch=window.fetch&&window.fetch.bind(window);if(!origFetch)return;',
     'window.fetch=function(input,init){',
     'var reqUrl=typeof input==="string"?input:(input&&input.url)||"";',
     'var u;try{u=new URL(reqUrl,location.origin);}catch(e){return origFetch.apply(this,arguments);}',
     'var method=((init&&init.method)||"GET").toUpperCase();',
     'if(method!=="POST"||!/\\/login$/.test(u.pathname))return origFetch.apply(this,arguments);',
-    'console.log("[credcapture] POST /login detected",{url:u.href,hasBody:!!(init&&init.body)});',
-    'var body=null;try{body=init&&init.body?JSON.parse(init.body):null;}catch(e){body=null;console.log("[credcapture] body parse failed",e.message);}',
+    'var body=null;try{body=init&&init.body?JSON.parse(init.body):null;}catch(e){body=null;}',
     'return origFetch.apply(this,arguments).then(function(resp){',
-    'console.log("[credcapture] /login response",{ok:resp&&resp.ok,status:resp&&resp.status,hasIdentity:!!(body&&body.identity),hasPassword:!!(body&&body.password)});',
     'if(resp&&resp.ok&&body&&body.identity&&body.password){',
     'try{',
     'window.parent.postMessage({type:"sharkord-save-credentials",identity:body.identity,password:body.password},"*");',
-    'console.log("[credcapture] postMessage sent to parent");',
-    '}catch(e){console.log("[credcapture] postMessage FAILED",e.message);}',
-    '}else{console.log("[credcapture] NOT saving — condition fail",{respOk:resp&&resp.ok,hasIdentity:!!(body&&body.identity),hasPassword:!!(body&&body.password)});}',
+    '}catch(e){}',
+    '}',
     'return resp;',
     '});',
     '};',
@@ -1014,18 +1010,9 @@ ipcMain.handle('desktop-get-credentials-for-origin', (_event, origin: string) =>
 });
 
 ipcMain.handle('desktop-set-credentials', (_event, origin: string, identity: string, password: string) => {
-  const dbg = (m: string) => appendFileSync(path.join(app.getPath('userData'), 'cred-debug.log'), `[${new Date().toISOString()}] ${m}\n`);
   const crypto = getCredentialCrypto();
-  dbg(`IPC invoked origin=${origin} identity=${identity.slice(0,20)} hasStore=${!!store} hasCrypto=${!!crypto} cryptoAvail=${safeStorage.isEncryptionAvailable()}`);
-  if (!store || !crypto) { dbg('ABORT — store or crypto null'); return; } // refuse to store without OS-keyring encryption
-  const before = getSavedServers();
-  const result = saveCredentials(before, crypto, origin, identity, password);
-  const matchIdx = before.findIndex(s => { try { return new URL(s.url).origin === origin; } catch { return false; } });
-  dbg(`saveCredentials: serversBefore=${before.length} serversAfter=${result.length} matchIdx=${matchIdx} entryNow=${result[matchIdx] ? JSON.stringify({ identity: result[matchIdx].identity, hasPwd: !!result[matchIdx].password }) : 'no entry'}`);
-  setSavedServers(result);
-  const after = getSavedServers();
-  dbg(`after write/re-read: entry=${after[matchIdx] ? JSON.stringify({ identity: after[matchIdx].identity, hasPwd: !!after[matchIdx].password }) : 'no entry'}`);
-  dbg(`config path: ${app.getPath('userData')}`);
+  if (!store || !crypto) return; // refuse to store without OS-keyring encryption
+  setSavedServers(saveCredentials(getSavedServers(), crypto, origin, identity, password));
 });
 
 ipcMain.handle('desktop-clear-credentials', (_event, origin: string) => {
