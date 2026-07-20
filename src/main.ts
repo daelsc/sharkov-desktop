@@ -36,12 +36,20 @@ type SavedServer = {
 type StoreType = { get: (key: string, defaultValue?: string) => string; set: (key: string, value: string) => void };
 let store: StoreType | null = null;
 
-const credentialCrypto: CredentialCrypto | null = safeStorage.isEncryptionAvailable()
-  ? {
-      encrypt: (text) => safeStorage.encryptString(text).toString('base64'),
-      decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
-    }
-  : null;
+// NOTE: safeStorage.isEncryptionAvailable() returns false before the app has emitted its
+// 'ready' event (on Windows it hard-returns false if Browser::is_ready() is false). Building
+// credentialCrypto at module-load time therefore always produced null, which silently
+// aborted every desktop-set-credentials IPC. Build it lazily on first use, after app.whenReady().
+let credentialCrypto: CredentialCrypto | null = null;
+function getCredentialCrypto(): CredentialCrypto | null {
+  if (credentialCrypto) return credentialCrypto;
+  if (!safeStorage.isEncryptionAvailable()) return null;
+  credentialCrypto = {
+    encrypt: (text) => safeStorage.encryptString(text).toString('base64'),
+    decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64'))
+  };
+  return credentialCrypto;
+}
 
 const SAVED_SERVERS_KEY = 'savedServers';
 const DEVICE_PREFS_KEY = 'devicePreferences';
@@ -1000,16 +1008,18 @@ ipcMain.handle('desktop-reorder-servers', (_event, orderedIds: string[]) => {
 });
 
 ipcMain.handle('desktop-get-credentials-for-origin', (_event, origin: string) => {
-  if (!credentialCrypto) return null;
-  return loadCredentials(getSavedServers(), credentialCrypto, origin);
+  const crypto = getCredentialCrypto();
+  if (!crypto) return null;
+  return loadCredentials(getSavedServers(), crypto, origin);
 });
 
 ipcMain.handle('desktop-set-credentials', (_event, origin: string, identity: string, password: string) => {
   const dbg = (m: string) => appendFileSync(path.join(app.getPath('userData'), 'cred-debug.log'), `[${new Date().toISOString()}] ${m}\n`);
-  dbg(`IPC invoked origin=${origin} identity=${identity.slice(0,20)} hasStore=${!!store} hasCrypto=${!!credentialCrypto} cryptoAvail=${safeStorage.isEncryptionAvailable()}`);
-  if (!store || !credentialCrypto) { dbg('ABORT — store or crypto null'); return; } // refuse to store without OS-keyring encryption
+  const crypto = getCredentialCrypto();
+  dbg(`IPC invoked origin=${origin} identity=${identity.slice(0,20)} hasStore=${!!store} hasCrypto=${!!crypto} cryptoAvail=${safeStorage.isEncryptionAvailable()}`);
+  if (!store || !crypto) { dbg('ABORT — store or crypto null'); return; } // refuse to store without OS-keyring encryption
   const before = getSavedServers();
-  const result = saveCredentials(before, credentialCrypto, origin, identity, password);
+  const result = saveCredentials(before, crypto, origin, identity, password);
   const matchIdx = before.findIndex(s => { try { return new URL(s.url).origin === origin; } catch { return false; } });
   dbg(`saveCredentials: serversBefore=${before.length} serversAfter=${result.length} matchIdx=${matchIdx} entryNow=${result[matchIdx] ? JSON.stringify({ identity: result[matchIdx].identity, hasPwd: !!result[matchIdx].password }) : 'no entry'}`);
   setSavedServers(result);
